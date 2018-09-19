@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package network_helper;
+
+message Package{
+    string id = 1;
+    string message = 2;
+    string time = 3;
+}
