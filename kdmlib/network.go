@@ -1,4 +1,4 @@
-package kademlia
+package kdmlib
 
 type Network struct {
 }

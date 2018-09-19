@@ -1,4 +1,4 @@
-package kademlia
+package kdmlib
 
 import (
 	"fmt"
@@ -38,6 +38,11 @@ func (contact *Contact) String() string {
 // stores an array of Contacts
 type ContactCandidates struct {
 	contacts []Contact
+}
+
+// Return new ContactCandidates object.
+func NewContactCandidates() ContactCandidates {
+	return ContactCandidates{}
 }
 
 // Append an array of Contacts to the ContactCandidates
