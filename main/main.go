@@ -1,12 +1,12 @@
 package main
 
 import (
-	"Kademlia---P2P-DFS/d7024e"
+	"Kademlia---P2P-DFS/kademlia"
 	"fmt"
 )
 
 func main() {
-	contact := d7024e.NewContact(d7024e.NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "localhost:8000")
+	contact := kademlia.NewContact(kademlia.NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "localhost:8000")
 	fmt.Print(contact.String())
 }
 

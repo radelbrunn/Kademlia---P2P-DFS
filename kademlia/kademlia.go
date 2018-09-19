@@ -1,7 +1,7 @@
-package d7024e
+package kademlia
 
 type Kademlia struct {
-	rt      *RoutingTable
+	//rt      *RoutingTable
 	network Network
 	alpha   int
 	k       int

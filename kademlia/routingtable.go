@@ -1,5 +1,6 @@
-package d7024e
+package kademlia
 
+/**
 import (
 	"container/list"
 	"errors"
@@ -271,10 +272,9 @@ func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ow
 
 	return routingTable, routingChannel
 }
+**/
 
-/** OLD PROVIDED CODE
 const bucketSize = 20
-
 
 // RoutingTable definition
 // keeps a refrence contact of me and an array of buckets
@@ -341,4 +341,3 @@ func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int {
 
 	return IDLength*8 - 1
 }
-*/
