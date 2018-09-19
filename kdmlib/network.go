@@ -62,7 +62,7 @@ func SendMessageAsAPackageTest(contact Contact) {
 	Conn, err := net.DialUDP("udp", LocalAddr, ServerAddr)
 	CheckError(err)
 
-	pack := CreatePackege(messageID.String(), "My_message", time.ANSIC)
+	pack := CreatePackage(messageID.String(), "My_message", time.ANSIC)
 	SendData(PackageToMarshal(pack), Conn)
 	defer Conn.Close()
 }
@@ -80,17 +80,16 @@ func (network *Network) SendStoreMessage(data []byte) {
 }
 func SendData(data []byte, Conn *net.UDPConn) {
 
-	for {
-		buf := []byte(data)
-		_, err := Conn.Write(buf)
+	buf := []byte(data)
+	_, err := Conn.Write(buf)
 
-		if err != nil {
-			fmt.Println(data, err)
-		}
-		time.Sleep(time.Second * 1)
+	if err != nil {
+		fmt.Println(data, err)
 	}
+	time.Sleep(time.Second * 1)
+
 }
-func CreatePackege(id string, msg string, time string) *pb.Package {
+func CreatePackage(id string, msg string, time string) *pb.Package {
 	pack := pb.Package{
 		Id:      id,
 		Message: msg,
