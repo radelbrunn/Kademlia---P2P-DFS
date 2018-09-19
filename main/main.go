@@ -1,45 +1,14 @@
 package main
 
 import (
-	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
-	"Kademlia/src_code"
+	"Kademlia---P2P-DFS/kdmlib"
 	"fmt"
-	"github.com/golang/protobuf/proto"
-	"net"
 )
 
 func main() {
-	//Test. Send message as a package with marshal.
-	// This will eventually be modified and moved to network_test.go once its created
-	id := src_code.NewKademliaID("ffffffff00000000000000000000000000000000")
-	//channel := make(chan interface{}) //todo: learn how to use channels proper
-	contact := src_code.NewContact(id, "localhost:9000")
-	serverAddr, err := net.ResolveUDPAddr("udp", contact.Address)
-	src_code.CheckError(err)
-	serverConn, err := net.ListenUDP("udp", serverAddr)
-	src_code.CheckError(err)
-	defer serverConn.Close()
-	buf := make([]byte, 4096)
-
-	go src_code.SendMessageAsAPackageTest(contact)
-	for {
-		n, addr, err := serverConn.ReadFromUDP(buf)
-
-		packet := &pb.Package{}
-		err = proto.Unmarshal(buf[0:n], packet)
-		fmt.Println("Received data from: ", addr, "DATA :=> ", packet.Id, " : ", packet.Message, ": ", packet.Time)
-
-		if err != nil {
-			fmt.Println("Error: ", err)
-		}
-		return
-	}
+	contact := kdmlib.NewContact(kdmlib.NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "localhost:8000")
+	fmt.Print(contact.String())
 }
-
-//func main() {
-//	contact := kdmlib.NewContact(kdmlib.NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "localhost:8000")
-//	fmt.Print(contact.String())
-//}
 
 //func main() {
 //	channelIn := make(chan OrderForPinger, 100)
