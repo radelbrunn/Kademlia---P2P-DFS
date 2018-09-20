@@ -2,17 +2,20 @@ package kdmlib
 
 type Kademlia struct {
 	closestContacts []AddressTriple
-	node_id         string
-	rtch            chan OrderForRoutingTable
+	nodeId          string
+	rt              routingTableAndCache
+	ch              chan OrderForRoutingTable
 	network         Network
 	alpha           int
 	k               int
 }
 
-func NewKademliaInstance(nw *Network, node_id string, alpha int, k int) *Kademlia {
+func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int) *Kademlia {
 	kademlia := &Kademlia{}
 	kademlia.network = *nw
-	kademlia.node_id = "RANDOM"
+
+	kademlia.nodeId = "RANDOM"
+	kademlia.rt, kademlia.ch = CreateAllWorkersForRoutingTable(k, 160, 5, nodeId)
 	kademlia.alpha = alpha
 	kademlia.k = k
 	return kademlia

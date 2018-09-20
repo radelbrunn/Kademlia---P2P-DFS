@@ -1,6 +1,15 @@
 package kdmlib
 
+import ()
+
 type Network struct {
+}
+
+func NewNetwork(ip string, port int) *Network {
+
+	network := &Network{}
+
+	return network
 }
 
 func Listen(ip string, port int) {

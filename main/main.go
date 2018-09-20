@@ -1,7 +1,22 @@
 package main
 
-func main() {
+import (
+	"Kademlia---P2P-DFS/kdmlib"
+	"fmt"
+)
 
+func main() {
+	StartKademlia()
+}
+
+func StartKademlia() {
+	id := kdmlib.GenerateRandID()
+	ip := "127.0.0.1"
+	port := 87
+	nw := kdmlib.NewNetwork(ip, port)
+	kademlia := kdmlib.NewKademliaInstance(nw, id, kdmlib.ALPHA, kdmlib.K)
+
+	fmt.Println(kademlia)
 }
 
 //func main() {
