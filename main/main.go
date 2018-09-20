@@ -1,13 +1,7 @@
 package main
 
-import (
-	"Kademlia---P2P-DFS/kdmlib"
-	"fmt"
-)
-
 func main() {
-	contact := kdmlib.NewContact(kdmlib.NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "localhost:8000")
-	fmt.Print(contact.String())
+
 }
 
 //func main() {
