@@ -6,7 +6,10 @@ import (
 )
 
 func main() {
-	StartKademlia()
+	//StartKademlia()
+	id := kdmlib.GenerateRandID()
+	fmt.Println(id)
+	kdmlib.ConvertToHexAddr(id)
 }
 
 func StartKademlia() {
