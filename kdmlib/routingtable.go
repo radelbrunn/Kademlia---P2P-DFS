@@ -125,8 +125,12 @@ func pingWorker(in chan OrderForPinger, out chan OrderForRoutingTable, chanLocke
 
 //read from the channel and updates the routing table accordingly
 func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan OrderForRoutingTable, ownId string, k int, pingerChannel chan OrderForPinger) {
-
+	ordersToSend := list.New()
 	for order := range channel {
+		//fill the pinger channel if it is not full
+		for ordersToSend.Len()>0 && (cap(pingerChannel)> len(pingerChannel)) {
+			pingerChannel <- ordersToSend.Remove(ordersToSend.Front()).(OrderForPinger)
+		}
 		//var element list.Element
 		//element = *(order.target)
 		//fmt.Println(element.Value.(string))
@@ -159,7 +163,11 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 						for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
 							last = ele
 						}
-						pingerChannel <- OrderForPinger{last.Value.(AddressTriple), order.target, true}
+						if len(pingerChannel)< cap(pingerChannel){
+							pingerChannel <- OrderForPinger{last.Value.(AddressTriple), order.target, true}
+						}else{
+							ordersToSend.PushBack(OrderForPinger{last.Value.(AddressTriple), order.target, true})
+						}
 					} else {
 						(*(routingTable.cache))[index].PushFront(list.Element{})
 					}
