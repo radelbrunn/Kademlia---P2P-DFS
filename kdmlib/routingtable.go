@@ -49,8 +49,8 @@ type routingTableAndCache struct {
 
 //triple and distance
 type tripleAndDistance struct {
-	triple   AddressTriple
-	distance string
+	Triple   AddressTriple
+	Distance string
 }
 
 //returns a slice of the k closest node to id
@@ -79,10 +79,10 @@ func (routing routingTableAndCache) FindKClosest(id string) []tripleAndDistance 
 	}
 	routing.lock.Unlock()
 	sort.Slice(nodes, func(i, j int) bool {
-		if nodes[i].distance == "" {
+		if nodes[i].Distance == "" {
 			return false
 		}
-		return nodes[i].distance < nodes[j].distance
+		return nodes[i].Distance < nodes[j].Distance
 	})
 
 	return nodes[:k]
