@@ -50,9 +50,9 @@ func Listen(buf []byte, ServerConn *net.UDPConn, ServerAddr *net.UDPAddr, quit c
 	}
 	quit <- struct{}{}
 }
-func SendSomething(contact Contact, Conn *net.UDPConn) {
+func SendSomething(contact AddressTriple, Conn *net.UDPConn) {
 
-	ServerAddr, err := net.ResolveUDPAddr("udp", contact.Address)
+	ServerAddr, err := net.ResolveUDPAddr("udp", contact.Ip+":"+contact.Port)
 	CheckError(err)
 	pack := &pb.Package{Id: "Request", Type: "SendSomething", Message: "TEST", Time: time.Now().String()}
 	//pack := CreatePackage("Request", "SendSomething", "TEST", time.Now().String()) //<- test buffers directly
@@ -60,10 +60,10 @@ func SendSomething(contact Contact, Conn *net.UDPConn) {
 	SendData(PackageToMarshal(pack), Conn, ServerAddr)
 	//defer Conn.Close()
 }
-func (network *Network) SendPingMessage(contact Contact) {
+func (network *Network) SendPingMessage(contact AddressTriple) {
 
 }
-func (network *Network) SendFindContactMessage(contact *Contact) {
+func (network *Network) SendFindContactMessage(contact *AddressTriple) {
 	// TODO
 }
 func (network *Network) SendFindDataMessage(hash string) {

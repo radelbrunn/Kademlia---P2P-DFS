@@ -1,15 +1,17 @@
 package main
 
 import (
+	"Kademlia---P2P-DFS/github.com/golang/protobuf/proto"
 	"Kademlia---P2P-DFS/kdmlib"
+	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
 	"fmt"
+	"net"
+	"time"
 )
 
 func main() {
 	//StartKademlia()
-	id := kdmlib.GenerateRandID()
-	fmt.Println(id)
-	kdmlib.ConvertToHexAddr(id)
+	networktest()
 }
 
 func StartKademlia() {
@@ -22,14 +24,12 @@ func StartKademlia() {
 	fmt.Println(kademlia)
 }
 
-/* NETWORK TEST
+func networktest() {
 
-func main() {
-
-	id := kdmlib.NewKademliaID("ffffffff00000000000000000000000000000000")
+	id := kdmlib.GenerateIDFromHex("ffffffff00000000000000000000000000000000")
 	//channel := make(chan interface{})
-	contact := kdmlib.NewContact(id, "localhost:9000")
-	serverAddr, err := net.ResolveUDPAddr("udp", contact.Address)
+	contact := kdmlib.AddressTriple{"localhost", "9000", id}
+	serverAddr, err := net.ResolveUDPAddr("udp", contact.Ip+":"+contact.Port)
 	kdmlib.CheckError(err)
 	serverConn, err := net.ListenUDP("udp", serverAddr)
 	kdmlib.CheckError(err)
@@ -90,8 +90,6 @@ func Handler(packet *pb.Package, serverConn *net.UDPConn, addr *net.UDPAddr) {
 		break
 	}
 }
-
-*/
 
 /* ROUTING TABLE TEST
 
