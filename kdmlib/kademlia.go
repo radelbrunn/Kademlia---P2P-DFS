@@ -1,13 +1,11 @@
 package kdmlib
 
 type Kademlia struct {
-	closestContacts []AddressTriple
-	nodeId          string
-	rt              routingTableAndCache
-	ch              chan OrderForRoutingTable
-	network         Network
-	alpha           int
-	k               int
+	nodeId  string
+	rt      RoutingTable
+	network Network
+	alpha   int
+	k       int
 }
 
 func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int) *Kademlia {
@@ -15,9 +13,11 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int) *Kademlia
 	kademlia.network = *nw
 
 	kademlia.nodeId = GenerateRandID()
-	//kademlia.rt, kademlia.ch = CreateAllWorkersForRoutingTable(k, 160, 5, nodeId)
+	kademlia.rt = CreateAllWorkersForRoutingTable(k, 160, 5, nodeId)
 	kademlia.alpha = alpha
 	kademlia.k = k
+
+	//kademlia.rt.GiveOrder(OrderForRoutingTable{1, })
 	return kademlia
 }
 

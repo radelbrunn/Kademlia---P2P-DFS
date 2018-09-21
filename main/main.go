@@ -16,8 +16,7 @@ func main() {
 
 func StartKademlia() {
 	id := kdmlib.GenerateRandID()
-	//ip := "127.0.0.1"
-	port := 87
+	port := 44444 //Need high port number
 	nw := kdmlib.Initialize_Network(port)
 	kademlia := kdmlib.NewKademliaInstance(nw, id, kdmlib.ALPHA, kdmlib.K)
 
