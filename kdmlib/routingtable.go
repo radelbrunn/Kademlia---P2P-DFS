@@ -258,16 +258,32 @@ func computeDistance(id1 string, id2 string) (string, error) {
 	}
 }
 
-func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ownId string) (routingTableAndCache, chan OrderForRoutingTable) {
+type RoutingTable struct {
+	routingChannel chan OrderForRoutingTable
+	lock *sync.Mutex
+	routingtable routingTableAndCache
+}
+
+func (table RoutingTable) GiveOrder (order OrderForRoutingTable){
+	table.lock.Lock()
+	table.routingChannel <- order
+	table.lock.Unlock()
+}
+
+func (table RoutingTable) FindKClosest (id string) (tripleAndDistance []tripleAndDistance){
+	return table.routingtable.FindKClosest(id)
+}
+
+func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ownId string) (RoutingTable) {
 	routingChannel := make(chan OrderForRoutingTable, 1000)
 	pingingChannel := make(chan OrderForPinger, 1000)
 	routingTable := createRoutingTable(k, idLegnth)
-	var pingerMutex = &sync.Mutex{}
+	var channelLocker = &sync.Mutex{}
 
 	go updateRoutingTableWorker(routingTable, routingChannel, ownId, k, pingingChannel)
 	for i := 0; i < numberOfPinger; i++ {
-		go pingWorker(pingingChannel, routingChannel, pingerMutex)
+		go pingWorker(pingingChannel, routingChannel, channelLocker)
 	}
 
-	return routingTable, routingChannel
+	return RoutingTable{routingChannel,channelLocker,routingTable}
 }
