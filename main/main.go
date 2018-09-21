@@ -66,6 +66,11 @@ func Handler(packet *pb.Package, serverConn *net.UDPConn, addr *net.UDPAddr) {
 		case "Ping":
 			break
 		case "FindContact":
+			/*contactList:= kdmlib.FindKClosest(packet.data) //repeated string data = 4 [packed=true]; //using rt functions
+			pack := &pb.Package{Id: "Return", Type: "Contact", Message: contactList, Time: time.Now().String()} //work in progress
+				//also try: pack.contactList.extend([1, 32, 43432])
+			kdmlib.SendData(kdmlib.PackageToMarshal(pack), serverConn, addr)
+			*/
 			break
 		case "FindData":
 			break
@@ -81,6 +86,9 @@ func Handler(packet *pb.Package, serverConn *net.UDPConn, addr *net.UDPAddr) {
 		case "Ping":
 			break
 		case "Contact":
+			//for i := range pb.ContactList {
+			//	fmt.Println()
+			//}
 			break
 		case "Data":
 			break

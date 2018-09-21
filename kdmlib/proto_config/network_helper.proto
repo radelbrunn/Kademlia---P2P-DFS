@@ -3,13 +3,21 @@ syntax = "proto3";
 package network_helper;
 
 
-// The request message containing the user's name.
-message SayHelloWorld {
-    string name = 1;
+message ContactList {
+    message Contact {
+        string ID = 1;
+        string Address = 2;
+    }
+    repeated Contact Contacts = 1;
 }
 message Package{
     string id = 1;
     string type = 2;
     string message = 3;
     string time = 4;
+
+    oneof msg_options {
+        ContactList contactlist =5
+    }
+
 }
