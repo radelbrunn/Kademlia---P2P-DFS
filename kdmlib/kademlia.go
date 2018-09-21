@@ -15,7 +15,7 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int) *Kademlia
 	kademlia.network = *nw
 
 	kademlia.nodeId = GenerateRandID()
-	kademlia.rt, kademlia.ch = CreateAllWorkersForRoutingTable(k, 160, 5, nodeId)
+	//kademlia.rt, kademlia.ch = CreateAllWorkersForRoutingTable(k, 160, 5, nodeId)
 	kademlia.alpha = alpha
 	kademlia.k = k
 	return kademlia
