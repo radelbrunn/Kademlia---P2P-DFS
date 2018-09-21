@@ -26,9 +26,9 @@ type OrderForRoutingTable struct {
 
 //address and id of a node
 type AddressTriple struct {
-	ip   string
-	port string
-	id   string
+	Ip   string
+	Port string
+	Id   string
 }
 
 //order to send to a ping worker
@@ -49,8 +49,8 @@ type routingTableAndCache struct {
 
 //triple and distance
 type tripleAndDistance struct {
-	triple   AddressTriple
-	distance string
+	Triple   AddressTriple
+	Distance string
 }
 
 //returns a slice of the k closest node to id
@@ -68,7 +68,7 @@ func (routing routingTableAndCache) FindKClosest(id string) []tripleAndDistance 
 		for j := table[i].Front(); j != nil; j = j.Next() {
 			if table[i].Len() > 0 && j.Value != nil {
 				triple := j.Value.(AddressTriple)
-				distance, err := computeDistance(triple.id, id)
+				distance, err := computeDistance(triple.Id, id)
 				if err == nil {
 					nodes[l] = tripleAndDistance{triple, distance}
 					l++
@@ -79,10 +79,10 @@ func (routing routingTableAndCache) FindKClosest(id string) []tripleAndDistance 
 	}
 	routing.lock.Unlock()
 	sort.Slice(nodes, func(i, j int) bool {
-		if nodes[i].distance == "" {
+		if nodes[i].Distance == "" {
 			return false
 		}
-		return nodes[i].distance < nodes[j].distance
+		return nodes[i].Distance < nodes[j].Distance
 	})
 
 	return nodes[:k]
@@ -125,16 +125,20 @@ func pingWorker(in chan OrderForPinger, out chan OrderForRoutingTable, chanLocke
 
 //read from the channel and updates the routing table accordingly
 func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan OrderForRoutingTable, ownId string, k int, pingerChannel chan OrderForPinger) {
-
+	ordersToSend := list.New()
 	for order := range channel {
+		//fill the pinger channel if it is not full
+		for ordersToSend.Len()>0 && (cap(pingerChannel)> len(pingerChannel)) {
+			pingerChannel <- ordersToSend.Remove(ordersToSend.Front()).(OrderForPinger)
+		}
 		//var element list.Element
 		//element = *(order.target)
 		//fmt.Println(element.Value.(string))
 		var index int
 		if order.action == ADD {
-			index, _ = firstDifferentBit(order.target.id, ownId)
+			index, _ = firstDifferentBit(order.target.Id, ownId)
 		} else {
-			index, _ = firstDifferentBit(order.target.id, ownId)
+			index, _ = firstDifferentBit(order.target.Id, ownId)
 		}
 		//lock the table while modifying it
 		routingTable.lock.Lock()
@@ -142,7 +146,7 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 			//if in table then same behavior than bump
 			if isPresentInRoutingTable(routingTable, order.target, ownId) {
 				for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
-					if ele.Value.(AddressTriple).id == order.target.id {
+					if ele.Value.(AddressTriple).Id == order.target.Id {
 						fmt.Println("already present so pushing this value")
 						(*(routingTable.routingTable))[index].MoveToFront(ele)
 						break
@@ -159,7 +163,11 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 						for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
 							last = ele
 						}
-						pingerChannel <- OrderForPinger{last.Value.(AddressTriple), order.target, true}
+						if len(pingerChannel)< cap(pingerChannel){
+							pingerChannel <- OrderForPinger{last.Value.(AddressTriple), order.target, true}
+						}else{
+							ordersToSend.PushBack(OrderForPinger{last.Value.(AddressTriple), order.target, true})
+						}
 					} else {
 						(*(routingTable.cache))[index].PushFront(list.Element{})
 					}
@@ -168,7 +176,7 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 		} else if order.action == REMOVE {
 			//(*(routingTable.routingTable))[index].Remove(order.target)
 			for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
-				if ele.Value.(AddressTriple).id == order.target.id {
+				if ele.Value.(AddressTriple).Id == order.target.Id {
 					(*(routingTable.routingTable))[index].Remove(ele)
 					break
 				}
@@ -183,7 +191,7 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 }
 
 func ping(address AddressTriple) error {
-	conn, err := net.Dial("udp", address.ip+":"+address.port)
+	conn, err := net.Dial("udp", address.Ip+":"+address.Port)
 	if err != nil {
 		return err
 	}
@@ -215,11 +223,11 @@ func createRoutingTable(k int, idLength int) routingTableAndCache {
 }
 
 func isPresentInRoutingTable(routingTable routingTableAndCache, triple AddressTriple, ownid string) bool {
-	i, _ := firstDifferentBit(ownid, triple.id)
+	i, _ := firstDifferentBit(ownid, triple.Id)
 	for j := (*(routingTable.routingTable))[i].Front(); j != nil; j = j.Next() {
 		value, ok := j.Value.(AddressTriple)
-		id := value.id
-		if ok && id == triple.id {
+		id := value.Id
+		if ok && id == triple.Id {
 			(*(routingTable.routingTable))[i].MoveToFront(j)
 			return true
 		}
@@ -258,16 +266,32 @@ func computeDistance(id1 string, id2 string) (string, error) {
 	}
 }
 
-func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ownId string) (routingTableAndCache, chan OrderForRoutingTable) {
+type RoutingTable struct {
+	routingChannel chan OrderForRoutingTable
+	lock *sync.Mutex
+	routingtable routingTableAndCache
+}
+
+func (table RoutingTable) GiveOrder (order OrderForRoutingTable){
+	table.lock.Lock()
+	table.routingChannel <- order
+	table.lock.Unlock()
+}
+
+func (table RoutingTable) FindKClosest (id string) (tripleAndDistance []tripleAndDistance){
+	return table.routingtable.FindKClosest(id)
+}
+
+func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ownId string) (RoutingTable) {
 	routingChannel := make(chan OrderForRoutingTable, 1000)
 	pingingChannel := make(chan OrderForPinger, 1000)
 	routingTable := createRoutingTable(k, idLegnth)
-	var pingerMutex = &sync.Mutex{}
+	var channelLocker = &sync.Mutex{}
 
 	go updateRoutingTableWorker(routingTable, routingChannel, ownId, k, pingingChannel)
 	for i := 0; i < numberOfPinger; i++ {
-		go pingWorker(pingingChannel, routingChannel, pingerMutex)
+		go pingWorker(pingingChannel, routingChannel, channelLocker)
 	}
 
-	return routingTable, routingChannel
+	return RoutingTable{routingChannel,channelLocker,routingTable}
 }
