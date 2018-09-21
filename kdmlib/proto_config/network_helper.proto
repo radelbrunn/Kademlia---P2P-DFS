@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package network_helper;
+
+
+// The request message containing the user's name.
+message SayHelloWorld {
+    string name = 1;
+}
+message Package{
+    string id = 1;
+    string type = 2;
+    string message = 3;
+    string time = 4;
+}
