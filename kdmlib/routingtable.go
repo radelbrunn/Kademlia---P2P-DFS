@@ -26,9 +26,9 @@ type OrderForRoutingTable struct {
 
 //address and id of a node
 type AddressTriple struct {
-	ip   string
-	port string
-	id   string
+	Ip   string
+	Port string
+	Id   string
 }
 
 //order to send to a ping worker
@@ -68,7 +68,7 @@ func (routing routingTableAndCache) FindKClosest(id string) []tripleAndDistance 
 		for j := table[i].Front(); j != nil; j = j.Next() {
 			if table[i].Len() > 0 && j.Value != nil {
 				triple := j.Value.(AddressTriple)
-				distance, err := computeDistance(triple.id, id)
+				distance, err := computeDistance(triple.Id, id)
 				if err == nil {
 					nodes[l] = tripleAndDistance{triple, distance}
 					l++
@@ -132,9 +132,9 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 		//fmt.Println(element.Value.(string))
 		var index int
 		if order.action == ADD {
-			index, _ = firstDifferentBit(order.target.id, ownId)
+			index, _ = firstDifferentBit(order.target.Id, ownId)
 		} else {
-			index, _ = firstDifferentBit(order.target.id, ownId)
+			index, _ = firstDifferentBit(order.target.Id, ownId)
 		}
 		//lock the table while modifying it
 		routingTable.lock.Lock()
@@ -142,7 +142,7 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 			//if in table then same behavior than bump
 			if isPresentInRoutingTable(routingTable, order.target, ownId) {
 				for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
-					if ele.Value.(AddressTriple).id == order.target.id {
+					if ele.Value.(AddressTriple).Id == order.target.Id {
 						fmt.Println("already present so pushing this value")
 						(*(routingTable.routingTable))[index].MoveToFront(ele)
 						break
@@ -168,7 +168,7 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 		} else if order.action == REMOVE {
 			//(*(routingTable.routingTable))[index].Remove(order.target)
 			for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
-				if ele.Value.(AddressTriple).id == order.target.id {
+				if ele.Value.(AddressTriple).Id == order.target.Id {
 					(*(routingTable.routingTable))[index].Remove(ele)
 					break
 				}
@@ -183,7 +183,7 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 }
 
 func ping(address AddressTriple) error {
-	conn, err := net.Dial("udp", address.ip+":"+address.port)
+	conn, err := net.Dial("udp", address.Ip+":"+address.Port)
 	if err != nil {
 		return err
 	}
@@ -215,11 +215,11 @@ func createRoutingTable(k int, idLength int) routingTableAndCache {
 }
 
 func isPresentInRoutingTable(routingTable routingTableAndCache, triple AddressTriple, ownid string) bool {
-	i, _ := firstDifferentBit(ownid, triple.id)
+	i, _ := firstDifferentBit(ownid, triple.Id)
 	for j := (*(routingTable.routingTable))[i].Front(); j != nil; j = j.Next() {
 		value, ok := j.Value.(AddressTriple)
-		id := value.id
-		if ok && id == triple.id {
+		id := value.Id
+		if ok && id == triple.Id {
 			(*(routingTable.routingTable))[i].MoveToFront(j)
 			return true
 		}
