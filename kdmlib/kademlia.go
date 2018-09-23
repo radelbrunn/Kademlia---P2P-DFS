@@ -1,5 +1,7 @@
 package kdmlib
 
+import "net"
+
 type Kademlia struct {
 	closestContacts []AddressTriple
 	nodeId          string
@@ -8,12 +10,13 @@ type Kademlia struct {
 	network         Network
 	alpha           int
 	k               int
+	myaddress       net.IPAddr
 }
 
-func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int) *Kademlia {
+func NewKademliaInstance(nw *Network, nodeId string, address net.IPAddr, alpha int, k int) *Kademlia {
 	kademlia := &Kademlia{}
 	kademlia.network = *nw
-
+	kademlia.myaddress = address
 	kademlia.nodeId = GenerateRandID()
 	//kademlia.rt, kademlia.ch = CreateAllWorkersForRoutingTable(k, 160, 5, nodeId)
 	kademlia.alpha = alpha

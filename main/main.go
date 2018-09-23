@@ -6,22 +6,13 @@ import (
 	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
 	"fmt"
 	"net"
-	"time"
 )
 
 func main() {
-	//StartKademlia()
 	networktest()
-}
-
-func StartKademlia() {
-	id := kdmlib.GenerateRandID()
-	//ip := "127.0.0.1"
-	port := 87
-	nw := kdmlib.Initialize_Network(port)
-	kademlia := kdmlib.NewKademliaInstance(nw, id, kdmlib.ALPHA, kdmlib.K)
-
-	fmt.Println(kademlia)
+	//ID := kdmlib.GenerateRandID()
+	//kademlia := kdmlib.NewKademliaInstance(kdmlib.InitializeNetwork(9000), ID, kdmlib.ALPHA, kdmlib.K)
+	//fmt.Println(kademlia)
 }
 
 func networktest() {
@@ -33,7 +24,7 @@ func networktest() {
 	kdmlib.CheckError(err)
 	serverConn, err := net.ListenUDP("udp", serverAddr)
 	kdmlib.CheckError(err)
-	defer serverConn.Close()
+	//defer serverConn.Close()
 	buf := make([]byte, 4096)
 
 	go kdmlib.SendSomething(contact, serverConn)
@@ -41,7 +32,7 @@ func networktest() {
 	for {
 		n, _, err := serverConn.ReadFromUDP(buf) //add addr
 
-		packet := &pb.Package{}
+		packet := &pb.Container{}
 		err = proto.Unmarshal(buf[0:n], packet)
 		if err != nil {
 			fmt.Println("Error: ", err)
@@ -51,75 +42,41 @@ func networktest() {
 	}
 
 }
-func Handler(packet *pb.Package, serverConn *net.UDPConn, addr *net.UDPAddr) {
-
-	switch packet.Id {
-	case "Request":
-		switch packet.Type {
-		case "SendSomething":
-			fmt.Println("Received a:", packet.Id, "with type:", packet.Type, "from: ", addr)
-			//Create appropriate pack with belonging data and ship it out
-			pack := &pb.Package{Id: "Return", Type: "ReturnSomething", Message: "TEST", Time: time.Now().String()}
-			fmt.Println("Returning a:", pack.Id, "with type:", pack.Type, "to: ", addr)
-			kdmlib.SendData(kdmlib.PackageToMarshal(pack), serverConn, addr)
+func Handler(container *pb.Container, serverConn *net.UDPConn, addr *net.UDPAddr) {
+	switch container.REQUEST_TYPE {
+	case kdmlib.Request:
+		switch container.REQUEST_ID {
+		case kdmlib.Ping:
+			//Create appropriate container with belonging data and ship it out
+			//ID := kdmlib.node.nodeID, ID := network.node.nodeID
+			fmt.Println("boop")
+			Info := &pb.RETURN_PING{ID: "ME!"}
+			Container := &pb.Container_ReturnPing{ReturnPing: Info}
+			Data := &pb.Container{REQUEST_TYPE: kdmlib.Return, REQUEST_ID: kdmlib.Ping, Attachment: Container}
+			kdmlib.Sendstuff(kdmlib.EncodeContainer(Data), serverConn, addr)
+			fmt.Println("beep")
 			break
-		case "Ping":
+		case kdmlib.FindContact:
 			break
-		case "FindContact":
-			/*contactList:= kdmlib.FindKClosest(packet.data) //repeated string data = 4 [packed=true]; //using rt functions
-			pack := &pb.Package{Id: "Return", Type: "Contact", Message: contactList, Time: time.Now().String()} //work in progress
-				//also try: pack.contactList.extend([1, 32, 43432])
-			kdmlib.SendData(kdmlib.PackageToMarshal(pack), serverConn, addr)
-			*/
+		case kdmlib.FindData:
 			break
-		case "FindData":
-			break
-		case "Store":
+		case kdmlib.Store:
 			break
 		}
 		break
-	case "Return":
-		switch packet.Type {
-		case "ReturnSomething":
-			fmt.Println("Received a: ", packet.Id, "with type:", packet.Type, "from: ", addr)
+	case kdmlib.Return:
+		switch container.REQUEST_ID {
+		case kdmlib.Ping:
+			fmt.Println("boop")
+			fmt.Println("repeat!")
 			break
-		case "Ping":
+		case kdmlib.FindContact:
 			break
-		case "Contact":
-			//for i := range pb.ContactList {
-			//	fmt.Println()
-			//}
+		case kdmlib.FindData:
 			break
-		case "Data":
-			break
-		case "Store":
+		case kdmlib.Store:
 			break
 		}
 		break
 	}
 }
-
-/* ROUTING TABLE TEST
-
-func main() {
-	channelIn := make(chan OrderForPinger, 100)
-	channelOut := make(chan OrderForRoutingTable)
-
-	mylist := list.New()
-	mylist.PushFront(AddressTriple{"127.0.0.1", "1053", ""})
-
-	routingtable := CreateRoutingTable(20, 4)
-	go UpdateRoutingTableWorker(routingtable, channelOut, "0000", 20, channelIn)
-	addressToAdd := AddressTriple{"127.0.0.1", "8080", "0010"}
-	addressToAdd2 := AddressTriple{"127.0.0.1", "8080", "0011"}
-	channelOut <- OrderForRoutingTable{ADD, addressToAdd, false}
-	channelOut <- OrderForRoutingTable{ADD, addressToAdd2, false}
-
-	time.Sleep(time.Second)
-
-
-	//fmt.Println(findKClosest(*routingtable.routingTable, "0100", 2))
-	fmt.Println((*routingtable.routingTable)[2].Front().Value)
-	fmt.Println((*routingtable.routingTable)[2].Front().Next().Value)
-}
-*/
