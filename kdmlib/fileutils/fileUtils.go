@@ -2,22 +2,26 @@ package fileUtilsKademlia
 
 import (
 	"fmt"
-	"container/list"
 	"time"
 	"io/ioutil"
 	"log"
 	"os"
+	"sync"
 )
 
 //checks if the file is pinned or not
+type PinnedFilesStruct struct {
+	pinnedFiles map[string]bool
+	lock *sync.Mutex
+}
 
-func checkIfInList(list *list.List, name string) *list.Element {
-	for str := list.Front(); str != nil; str = str.Next() {
-		if str.Value == name {
-			return str
-		}
-	}
-	return nil
+func CreatePinnedFileList() *PinnedFilesStruct{
+	return &PinnedFilesStruct{make(map[string]bool),&sync.Mutex{}}
+}
+
+func checkIfInList(pinnedFiles map[string]bool, name string) bool {
+	isPresent , _ := pinnedFiles[name]
+	return isPresent
 }
 
 
@@ -50,26 +54,27 @@ func FileHandlerWorker(orders chan Order){
 }
 
 
-//reads from the channel and pin or unpin arccording to the order
+//reads from the channel and pin or unpin according to the order
 
-func Pinner(orders <-chan Order, pinnedFiles *list.List) {
+func Pinner(orders <-chan Order, pinnedFiles *PinnedFilesStruct) {
 	for ordersFromchan := range orders {
+		pinnedFiles.lock.Lock()
 		if ordersFromchan.action == ADD {
-			if checkIfInList(pinnedFiles, ordersFromchan.name) == nil {
-				pinnedFiles.PushBack(ordersFromchan.name)
+			if !checkIfInList(pinnedFiles.pinnedFiles, ordersFromchan.name)  {
+				pinnedFiles.pinnedFiles[ordersFromchan.name]=true
 			}
-
 		} else if ordersFromchan.action == REMOVE {
-			if file := checkIfInList(pinnedFiles, ordersFromchan.name); file != nil {
-				pinnedFiles.Remove(file)
+			if checkIfInList(pinnedFiles.pinnedFiles, ordersFromchan.name) {
+				pinnedFiles.pinnedFiles[ordersFromchan.name]=false
 			}
 		}
+		pinnedFiles.lock.Unlock()
 	}
 }
 
 //wakes up once every hour to remove all the passed files not in the pinned list
 
-func Cleaner(pinnedFiles *list.List) {
+func Cleaner(pinnedFiles *PinnedFilesStruct) {
 	for {
 		files, err := ioutil.ReadDir("./.files/")
 		if err != nil {
@@ -78,10 +83,12 @@ func Cleaner(pinnedFiles *list.List) {
 
 		for _, f := range files {
 			if f.ModTime().Before(time.Now().Add(-time.Hour * 25)) {
-				if !f.IsDir() && checkIfInList(pinnedFiles, f.Name()) == nil {
+				pinnedFiles.lock.Lock()
+				if !f.IsDir() && checkIfInList(pinnedFiles.pinnedFiles, f.Name()) {
 					fmt.Println(f.Name(), " : file too old, thus removing it")
 					os.Remove(f.Name())
 				}
+				pinnedFiles.lock.Unlock()
 			}
 		}
 		time.Sleep(time.Hour)
