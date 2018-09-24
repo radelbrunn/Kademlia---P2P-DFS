@@ -105,6 +105,17 @@ func cleaner(pinnedFiles *pinnedFilesStruct) {
 	}
 }
 
+//reads file from os and returns a byte slice
+func ReadFileFromOS(name string) []byte{
+	dat, err := ioutil.ReadFile(fileDirectory+string(os.PathSeparator)+name)
+	if err!=nil{
+		fmt.Println(err)
+		return nil
+	}else{
+		return dat
+	}
+}
+
 //update last modified date to now
 
 func updateFile(name string) {
