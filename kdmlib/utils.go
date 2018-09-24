@@ -1,6 +1,8 @@
 package kdmlib
 
 import (
+	"encoding/hex"
+	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -13,6 +15,8 @@ const (
 	IDLENGTH = 160
 )
 
+//Generates a Random ID, of specified length, given by constant IDLENGTH
+//The returned ID is a bitwise representation
 func GenerateRandID() string {
 
 	id := ""
@@ -24,6 +28,7 @@ func GenerateRandID() string {
 	return id
 }
 
+//Converts a bitwise-represented ID into a HEX-represented ID
 func ConvertToHexAddr(binAddr string) string {
 	hexAddr := ""
 	for i := 0; i < IDLENGTH/4; i++ {
@@ -39,6 +44,7 @@ func ConvertToHexAddr(binAddr string) string {
 	return hexAddr
 }
 
+//Generates, or converts an ID from HEX-represented input ID
 func GenerateIDFromHex(hexAddr string) string {
 	binAddr := ""
 	hexXAddr := []rune(hexAddr[:])
@@ -97,4 +103,19 @@ func GenerateIDFromHex(hexAddr string) string {
 	}
 
 	return binAddr
+}
+
+//Encodes a file name into a 160 bit ID
+//Maximum 19 characters is allowed in fileName.
+func HashKademliaID(fileName string) string {
+	f := hex.EncodeToString([]byte(fileName))
+	if len(f) > 38 {
+		fmt.Println(f)
+		fmt.Println("Name of file can be maximum 19 characters, including file extension.")
+	}
+	f = f + "03"
+	for len(f) < 40 {
+		f = f + "01"
+	}
+	return f
 }

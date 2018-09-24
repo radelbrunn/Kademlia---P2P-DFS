@@ -11,7 +11,7 @@ import (
 
 func main() {
 	//StartKademlia()
-	networktest()
+	//networktest()
 }
 
 func StartKademlia() {
