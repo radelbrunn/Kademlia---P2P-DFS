@@ -9,44 +9,52 @@ import (
 	"sync"
 )
 
-//checks if the file is pinned or not
-type PinnedFilesStruct struct {
+type pinnedFilesStruct struct {
 	pinnedFiles map[string]bool
 	lock *sync.Mutex
 }
 
-func CreatePinnedFileList() *PinnedFilesStruct{
-	return &PinnedFilesStruct{make(map[string]bool),&sync.Mutex{}}
+//creates a map and returns its pointer
+func createPinnedFileList() *pinnedFilesStruct {
+	pinnedFiles := pinnedFilesStruct{make(map[string]bool),&sync.Mutex{}}
+	return &pinnedFiles
 }
 
+//checks if the file is pinned or not
 func checkIfInList(pinnedFiles map[string]bool, name string) bool {
 	isPresent , _ := pinnedFiles[name]
 	return isPresent
 }
 
-
-
+//creates a directory to put files in
 func createFilesDirectory(){
-	os.Mkdir("./files",0644)
+	os.Mkdir(".files",0644)
 }
 
 //add or removes files from the node
 func fileHandler(order Order) {
 	if order.action == ADD {
-		err := ioutil.WriteFile(".files/"+order.name, order.content, 0644)
-		if err != nil {
-			fmt.Println("something went wrong while creating file " + order.name)
+
+		//checks if the file is already present
+		if _, err := os.Stat(order.name); os.IsNotExist(err) {
+			err := ioutil.WriteFile(".files"+string(os.PathSeparator)+order.name, order.content, 0644)
+			if err != nil {
+				fmt.Println("something went wrong while creating file " + order.name)
+			}
+		}else{
+			//only updates the file's modification date if it is already present
+			updateFile(order.name)
 		}
 	} else if order.action == REMOVE {
-		err := os.Remove(".files/"+order.name)
+		err := os.Remove(".files"+string(os.PathSeparator)+order.name)
 		if err != nil {
 			fmt.Println("something went wrong while removing file " + order.name)
 		}
 	}
 }
 
-// create the ".file/" directory and populates it according to incoming orders
-func FileHandlerWorker(orders chan Order){
+// create the ".files" directory and populates it according to incoming orders
+func fileHandlerWorker(orders chan Order){
 	createFilesDirectory()
 	for {
 		fileHandler(<-orders)
@@ -56,7 +64,7 @@ func FileHandlerWorker(orders chan Order){
 
 //reads from the channel and pin or unpin according to the order
 
-func Pinner(orders <-chan Order, pinnedFiles *PinnedFilesStruct) {
+func pinner(orders <-chan Order, pinnedFiles *pinnedFilesStruct) {
 	for ordersFromchan := range orders {
 		pinnedFiles.lock.Lock()
 		if ordersFromchan.action == ADD {
@@ -74,9 +82,9 @@ func Pinner(orders <-chan Order, pinnedFiles *PinnedFilesStruct) {
 
 //wakes up once every hour to remove all the passed files not in the pinned list
 
-func Cleaner(pinnedFiles *PinnedFilesStruct) {
+func cleaner(pinnedFiles *pinnedFilesStruct) {
 	for {
-		files, err := ioutil.ReadDir("./.files/")
+		files, err := ioutil.ReadDir(".files")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -86,7 +94,7 @@ func Cleaner(pinnedFiles *PinnedFilesStruct) {
 				pinnedFiles.lock.Lock()
 				if !f.IsDir() && checkIfInList(pinnedFiles.pinnedFiles, f.Name()) {
 					fmt.Println(f.Name(), " : file too old, thus removing it")
-					os.Remove(f.Name())
+					os.Remove(".files"+string(os.PathSeparator)+f.Name())
 				}
 				pinnedFiles.lock.Unlock()
 			}
@@ -97,6 +105,25 @@ func Cleaner(pinnedFiles *PinnedFilesStruct) {
 
 //update last modified date to now
 
-func UpdateFile(name string) {
-	os.Chtimes(name, time.Now(), time.Now())
+func updateFile(name string) {
+	os.Chtimes(".files"+string(os.PathSeparator)+name, time.Now(), time.Now())
 }
+
+//creates all the workers needed to take care of the files
+// and returns the channels to communicate with the workers
+// 1st value is the channel for the pinner and the second one
+// is the channel for the fileHandler
+func CreateAndLaunchFileWorkers() (chan Order,chan Order){
+	channelForPinner := make(chan Order,1000)
+	channelForFileHandler := make(chan Order,1000)
+	pinnedFiles := createPinnedFileList()
+
+	go cleaner(pinnedFiles)
+	go pinner(channelForPinner,pinnedFiles)
+	go fileHandlerWorker(channelForFileHandler)
+
+	return channelForPinner,channelForFileHandler
+}
+
+
+
