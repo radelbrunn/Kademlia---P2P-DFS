@@ -40,8 +40,61 @@ func ConvertToHexAddr(binAddr string) string {
 }
 
 func GenerateIDFromHex(hexAddr string) string {
-	//TODO implement
+	binAddr := ""
+	hexXAddr := []rune(hexAddr[:])
 
-	hexAddr = ""
-	return "1100101101101011001010111010010001100101000101111111001111100000010000010010000011000101011010010010101001011010000100101110100100001010001000101110110011010100"
+	for i := 0; i < len(hexXAddr); i++ {
+		switch string(hexXAddr[i]) {
+		case "0":
+			binAddr += "0000"
+			break
+		case "1":
+			binAddr += "0001"
+			break
+		case "2":
+			binAddr += "0010"
+			break
+		case "3":
+			binAddr += "0011"
+			break
+		case "4":
+			binAddr += "0100"
+			break
+		case "5":
+			binAddr += "0101"
+			break
+		case "6":
+			binAddr += "0110"
+			break
+		case "7":
+			binAddr += "0111"
+			break
+		case "8":
+			binAddr += "1000"
+			break
+		case "9":
+			binAddr += "1001"
+			break
+		case "a":
+			binAddr += "1010"
+			break
+		case "b":
+			binAddr += "1011"
+			break
+		case "c":
+			binAddr += "1100"
+			break
+		case "d":
+			binAddr += "1101"
+			break
+		case "e":
+			binAddr += "1110"
+			break
+		case "f":
+			binAddr += "1111"
+			break
+		}
+	}
+
+	return binAddr
 }
