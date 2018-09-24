@@ -9,6 +9,8 @@ import (
 	"sync"
 )
 
+const fileDirectory = ".files"
+
 type pinnedFilesStruct struct {
 	pinnedFiles map[string]bool
 	lock *sync.Mutex
@@ -28,7 +30,7 @@ func checkIfInList(pinnedFiles map[string]bool, name string) bool {
 
 //creates a directory to put files in
 func createFilesDirectory(){
-	os.Mkdir(".files",0644)
+	os.Mkdir(fileDirectory,0644)
 }
 
 //add or removes files from the node
@@ -37,7 +39,7 @@ func fileHandler(order Order) {
 
 		//checks if the file is already present
 		if _, err := os.Stat(order.name); os.IsNotExist(err) {
-			err := ioutil.WriteFile(".files"+string(os.PathSeparator)+order.name, order.content, 0644)
+			err := ioutil.WriteFile(fileDirectory+string(os.PathSeparator)+order.name, order.content, 0644)
 			if err != nil {
 				fmt.Println("something went wrong while creating file " + order.name)
 			}
@@ -46,14 +48,14 @@ func fileHandler(order Order) {
 			updateFile(order.name)
 		}
 	} else if order.action == REMOVE {
-		err := os.Remove(".files"+string(os.PathSeparator)+order.name)
+		err := os.Remove(fileDirectory+string(os.PathSeparator)+order.name)
 		if err != nil {
 			fmt.Println("something went wrong while removing file " + order.name)
 		}
 	}
 }
 
-// create the ".files" directory and populates it according to incoming orders
+// create the fileDirectory directory and populates it according to incoming orders
 func fileHandlerWorker(orders chan Order){
 	createFilesDirectory()
 	for {
@@ -84,7 +86,7 @@ func pinner(orders <-chan Order, pinnedFiles *pinnedFilesStruct) {
 
 func cleaner(pinnedFiles *pinnedFilesStruct) {
 	for {
-		files, err := ioutil.ReadDir(".files")
+		files, err := ioutil.ReadDir(fileDirectory)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -94,7 +96,7 @@ func cleaner(pinnedFiles *pinnedFilesStruct) {
 				pinnedFiles.lock.Lock()
 				if !f.IsDir() && checkIfInList(pinnedFiles.pinnedFiles, f.Name()) {
 					fmt.Println(f.Name(), " : file too old, thus removing it")
-					os.Remove(".files"+string(os.PathSeparator)+f.Name())
+					os.Remove(fileDirectory+string(os.PathSeparator)+f.Name())
 				}
 				pinnedFiles.lock.Unlock()
 			}
@@ -106,7 +108,7 @@ func cleaner(pinnedFiles *pinnedFilesStruct) {
 //update last modified date to now
 
 func updateFile(name string) {
-	os.Chtimes(".files"+string(os.PathSeparator)+name, time.Now(), time.Now())
+	os.Chtimes(fileDirectory+string(os.PathSeparator)+name, time.Now(), time.Now())
 }
 
 //creates all the workers needed to take care of the files
