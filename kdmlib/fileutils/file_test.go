@@ -201,3 +201,14 @@ func TestUpdateFileFromHandler (t *testing.T){
 	os.Remove(".files"+string(filepath.Separator)+"testFile")
 	os.Remove(".files")
 }
+
+func TestPinRemove(t *testing.T){
+	pinnedFiles := createPinnedFileList()
+	pinFile(pinnedFiles,Order{ADD,"toto",nil})
+	pinFile(pinnedFiles,Order{REMOVE,"toto",nil})
+	if pinnedFiles.pinnedFiles["toto"]{
+		t.Error("entry not removed")
+	}
+}
+
+

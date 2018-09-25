@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-const fileDirectory = ".files"
+const fileDirectory = ".files"+string(os.PathSeparator)
 
 type pinnedFilesStruct struct {
 	pinnedFiles map[string]bool
@@ -66,7 +66,7 @@ func fileHandlerWorker(orders chan Order){
 	}
 }
 
-
+//pin or unpin a file
 func pinFile (pinnedFiles *pinnedFilesStruct,ordersFromchan Order){
 	pinnedFiles.lock.Lock()
 	if ordersFromchan.action == ADD {
@@ -89,6 +89,8 @@ func pinner(orders <-chan Order, pinnedFiles *pinnedFilesStruct) {
 	}
 }
 
+
+//remove old files that are more than 25 hours old and not in the pinned list
 func removeOldFiles( pinnedFiles *pinnedFilesStruct){
 	files, err := ioutil.ReadDir(fileDirectory)
 	if err != nil {
@@ -100,7 +102,7 @@ func removeOldFiles( pinnedFiles *pinnedFilesStruct){
 			pinnedFiles.lock.Lock()
 			if !f.IsDir() && !checkIfInList(pinnedFiles.pinnedFiles, f.Name()) {
 				fmt.Println(f.Name(), " : file too old, thus removing it")
-				os.Remove(fileDirectory+string(os.PathSeparator)+f.Name())
+				os.Remove(fileDirectory+f.Name())
 			}
 			pinnedFiles.lock.Unlock()
 		}
@@ -116,9 +118,10 @@ func cleaner(pinnedFiles *pinnedFilesStruct) {
 	}
 }
 
-//reads file from os and returns a byte slice
+//reads file from os and returns a byte slice.
+// Can be used to check if a file is present
 func ReadFileFromOS(name string) []byte{
-	dat, err := ioutil.ReadFile(fileDirectory+string(os.PathSeparator)+name)
+	dat, err := ioutil.ReadFile(fileDirectory+name)
 	if err!=nil{
 		fmt.Println(err)
 		return nil
@@ -130,7 +133,7 @@ func ReadFileFromOS(name string) []byte{
 //update last modified date to now
 
 func updateFile(name string) {
-	os.Chtimes(fileDirectory+string(os.PathSeparator)+name, time.Now(), time.Now())
+	os.Chtimes(fileDirectory+name, time.Now(), time.Now())
 }
 
 //creates all the workers needed to take care of the files
