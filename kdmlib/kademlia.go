@@ -66,19 +66,8 @@ func (kademlia *Kademlia) HandleChannelResponse(answer interface{}) (answerConta
 	return nil, ""
 }
 
-//hash is the hashed filename???
 func (kademlia *Kademlia) LookupData(hash string) {
-	/*
-		kademlia.closestContacts = NewContactCandidates()
-
-		//TODO Convert hash to a *KademliaID
-		//kademlia.closestContacts.Append(kademlia.rt.FindClosestContacts(hash, kademlia.alpha))
-
-		for i := 0; i < kademlia.alpha; i++ {
-			//TODO
-			fmt.Println("Send Find Data")
-		}
-	*/
+	// TODO
 }
 
 func (kademlia *Kademlia) Store(data []byte) {
