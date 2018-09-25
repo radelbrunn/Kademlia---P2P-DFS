@@ -22,6 +22,7 @@ func Initialize_Network(port int) *Network {
 	UDPConnection(port)
 	return network
 }
+
 func UDPConnection(port int) { //TODO: learn how to properly use channels
 	ServerAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(port))
 	CheckError(err)
