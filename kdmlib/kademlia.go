@@ -1,5 +1,7 @@
 package kdmlib
 
+import "fmt"
+
 type Kademlia struct {
 	closest []AddressTriple
 	asked   map[AddressTriple]bool
@@ -38,23 +40,30 @@ func (kademlia *Kademlia) FindNextNodeToAsk() (nextContact *AddressTriple, succe
 func (kademlia *Kademlia) LookupContact(target *AddressTriple) {
 	kademlia.closest = []AddressTriple{}
 
-	//tableClosest = kademlia.rt.FindKClosest(target.Id)
-
-	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
-
+	for _, e := range kademlia.rt.FindKClosest(target.Id) {
+		kademlia.closest = append(kademlia.closest, e.Triple)
 	}
 
-	//kademlia.closest = append(kademlia.closest, kademlia.rt.FindKClosest(target.Id))
+	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
+		fmt.Println("Sending find contact message")
+		//TODO: send request to Raviljs Find Contact function
+		//kademlia.network.SendFindContactMessage(kademlia.closest[i])
 
-	//rt, ch := CreateAllWorkersForRoutingTable(kademlia.k, 160, 5, kademlia.node_id)
-	//kademlia.closestContacts = NewContactCandidates()
+		kademlia.asked[kademlia.closest[i]] = true
+	}
 
-	/*
-		for i := 0; i < kademlia.alpha; i++ {
-			//TODO
-			fmt.Println("Send Find Contact request")
-		}
-	*/
+	//TODO: listen to response channel and call HandleChannelResponse func
+}
+
+func (kademlia *Kademlia) HandleChannelResponse(answer interface{}) (answerContacts []AddressTriple, dataAnswer string) {
+	switch answer := answer.(type) {
+	case []AddressTriple:
+		return answer, ""
+	case string:
+		return nil, answer
+	}
+
+	return nil, ""
 }
 
 //hash is the hashed filename???
