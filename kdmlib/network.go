@@ -10,14 +10,6 @@ import (
 	"strconv"
 )
 
-//Work in progress. Much will change!
-type Network struct {
-	//should'nt node keep track of its own ID? unsure if it should be contained in kademlia!
-	kademlia   *Kademlia
-	node       *Node
-	connection *net.UDPConn
-}
-
 const (
 	Request     = "Request"
 	Return      = "Return"
@@ -27,41 +19,39 @@ const (
 	Store       = "Store"
 )
 
+type Network struct {
+	kademlia *Kademlia
+	node     *Node
+}
+
 func InitializeNetwork(port int) *Network {
 	network := &Network{}
 	network.UDPConnection(port)
 	return network
 }
-
 func (network *Network) UDPConnection(port int) { //TODO: learn how to properly use channels
-	ServerAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(port))
+	ServerAddr, err := net.ResolveUDPAddr("udp", ":9000")
 	CheckError(err)
 
 	ServerConn, err := net.ListenUDP("udp", ServerAddr)
 	CheckError(err)
-	network.connection = ServerConn
-	buf := make([]byte, 1024)
 
 	quit := make(chan struct{})
-	go network.Listen(buf, ServerAddr, quit)
+	go network.Listen(ServerConn, quit)
 	<-quit
 }
-func (network *Network) Listen(buf []byte, ServerAddr *net.UDPAddr, quit chan struct{}) {
+func (network *Network) Listen(ServerConn *net.UDPConn, quit chan struct{}) {
 	//TODO: ADD worker pools
-	defer network.connection.Close()
+	buf := make([]byte, 1024)
+	defer ServerConn.Close()
 	for {
-		n, addr, err := network.connection.ReadFromUDP(buf)
-
-		packet := &pb.Container{}
-		err = proto.Unmarshal(buf[0:n], packet)
+		n, addr, err := ServerConn.ReadFromUDP(buf)
+		container := &pb.Container{}
+		err = proto.Unmarshal(buf[0:n], container)
 		if err != nil {
 			fmt.Println("Error: ", err)
 		}
-		/*contact := AddressTriple{addr.IP.String(),addr.Port,packet.ID}
-		  either use addr and ID to combine into an AddressTriple or just not use it!
-		  tripleAndDistance does exactly what contact did? why change it? makes it so much harder to code!
-		*/
-		network.Handler(packet, addr)
+		network.Handler(container, addr)
 	}
 	quit <- struct{}{}
 }
@@ -70,106 +60,124 @@ func (network *Network) Handler(container *pb.Container, addr *net.UDPAddr) {
 	case Request:
 		switch container.REQUEST_ID {
 		case Ping:
-			network.ReturnPing(addr)
+			fmt.Println("Received Ping_Request")
+			//network.ReturnPing(addr)
+			fmt.Println("Returned Ping_Request")
 			break
 		case FindContact:
-			/*
-				The recipient of the RPC returns up to k triples (IP address, port, nodeID)
-				for the contacts that it knows to be closest to the key.
-			*/
-			network.ReturnContactRequest(addr)
+			fmt.Println("Received FindContact_Request")
+			fmt.Println(container.GetRequestContact().ID)
+			//network.ReturnContactRequest(addr, container.GetRequestContact().ID)
+			fmt.Println("Returned FindContact_Request")
 			break
 		case FindData:
-			/*
-				If a corresponding value is present on the recipient,the associated data is returned.
-				Otherwise the RPC is equivalent to a FIND_NODE and a set of k triples is returned.
-			*/
-			network.ReturnDataRequest(addr)
+			fmt.Println("Received FindData_Request")
+			fmt.Println(container.GetRequestData().KEY)
+			//network.ReturnDataRequest(addr, container.GetRequestData().KEY, container.GetRequestContact().ID)
+			fmt.Println("Returned FindData_Request")
 			break
 		case Store:
-			network.ReturnStoreRequest(addr)
+			fmt.Println("Received Store_Request")
+			fmt.Println(container.GetRequestStore().KEY)
+			fmt.Println(container.GetRequestStore().VALUE)
+			//network.ReturnStoreRequest(addr)
+			fmt.Println("Returned Store_Request")
 			break
 		}
 		break
 	case Return:
 		switch container.REQUEST_ID {
 		case Ping:
+			fmt.Println("Ping Returned")
 			break
 		case FindContact:
+			fmt.Println("Contact Returned")
 			break
 		case FindData:
+			fmt.Println("Data Returned")
 			break
 		case Store:
+			fmt.Println("Store Returned")
 			break
 		}
 		break
 	}
 }
-
 func (network *Network) SendPing(addr *net.UDPAddr) {
 	myID := network.kademlia.nodeId
 	Info := &pb.REQUEST_PING{ID: myID}
 	Data := &pb.Container_RequestPing{RequestPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, Attachment: Data}
-	network.Send(Container, addr)
+	network.SendData(Container, addr)
 }
-func (network *Network) SendContactRequest(addr *net.UDPAddr, contact_id string) {
-	Info := &pb.REQUEST_CONTACT{ID: contact_id}
+func (network *Network) SendContactRequest(addr *net.UDPAddr, contactID string) {
+	Info := &pb.REQUEST_CONTACT{ID: contactID}
 	Data := &pb.Container_RequestContact{RequestContact: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, Attachment: Data}
-	network.Send(Container, addr)
+	network.SendData(Container, addr)
 }
 func (network *Network) SendDataRequest(addr *net.UDPAddr, HASH string) {
 	Info := &pb.REQUEST_DATA{KEY: HASH}
 	Data := &pb.Container_RequestData{RequestData: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, Attachment: Data}
-	network.Send(Container, addr)
+	network.SendData(Container, addr)
 }
 func (network *Network) SendStoreRequest(addr *net.UDPAddr, KEY string, DATA []byte) {
 	Info := &pb.REQUEST_STORE{KEY: KEY, VALUE: DATA}
 	Data := &pb.Container_RequestStore{RequestStore: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, Attachment: Data}
-	network.Send(Container, addr)
+	network.SendData(Container, addr)
 }
-
 func (network *Network) ReturnPing(addr *net.UDPAddr) {
 	myID := network.kademlia.nodeId
 	Info := &pb.RETURN_PING{ID: myID}
 	Data := &pb.Container_ReturnPing{ReturnPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Ping, Attachment: Data}
-	network.Send(Container, addr)
+	network.SendData(Container, addr)
 }
-func (network *Network) ReturnContactRequest(addr *net.UDPAddr) {
-	/*my_Contacts := network.node.rt.FindKClosest(contact.Id)
-	Info := &pb.RETURN_CONTACTS{ContactInfo: my_Contacts}
+func (network *Network) ReturnContactRequest(addr *net.UDPAddr, contactID string) {
+	closestContacts := network.node.rt.FindKClosest(contactID)
+	contactListReply := []*pb.RETURN_CONTACTS_CONTACT_INFO{}
+	for i := range closestContacts {
+		contactReply := &pb.RETURN_CONTACTS_CONTACT_INFO{IP: closestContacts[i].Triple.Ip, PORT: closestContacts[i].Triple.Port,
+			ID: closestContacts[i].Triple.Id}
+		contactListReply = append(contactListReply, contactReply)
+	}
+	Info := &pb.RETURN_CONTACTS{ContactInfo: contactListReply}
 	Data := &pb.Container_ReturnContacts{ReturnContacts: Info}
-	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Ping, Attachment: Data}
-	network.Send(Container, addr)
-	*/
+	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindContact, Attachment: Data}
+	network.SendData(Container, addr)
+
 }
-func (network *Network) ReturnDataRequest(addr *net.UDPAddr) {
-	/*if(data){
-	//data is available, return it
-	}
-	else{
-	ReturnContactRequest(addr)
-	}
-	*/
+func (network *Network) ReturnDataRequest(addr *net.UDPAddr, DataID string, contactID string) {
+
+	//if network.node.fileUtils.ReadFileFromOS(DataID) !=nil {
+
+	//Value:= network.node.fileUtils.getValue(DataID)
+	Value := ""
+	Info := &pb.RETURN_DATA{VALUE: Value}
+	Data := &pb.Container_ReturnData{ReturnData: Info}
+	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Ping, Attachment: Data}
+	network.SendData(Container, addr)
+	//} else{
+	//	network.ReturnContactRequest(addr,contactID)
+	//}
 }
 func (network *Network) ReturnStoreRequest(addr *net.UDPAddr) {
 	//check if file already exist, if not, download and reply on the store request.
 }
+func (network *Network) SendData(container *pb.Container, contact *net.UDPAddr) {
 
-func (network *Network) Send(container *pb.Container, addr *net.UDPAddr) {
-	network.SendData(container, addr)
-}
-func (network *Network) SendData(container *pb.Container, addr *net.UDPAddr) {
+	conn, err := net.Dial("udp", contact.IP.String()+":"+strconv.Itoa(contact.Port))
+	CheckError(err)
 
 	buf := []byte(EncodeContainer(container))
-	_, err := network.connection.WriteToUDP(buf, addr)
+	_, err = conn.Write(buf)
+
 	if err != nil {
 		fmt.Println(EncodeContainer(container), err)
 	}
+	defer conn.Close()
 }
 func EncodeContainer(pack *pb.Container) []byte {
 	data, err := proto.Marshal(pack)
@@ -185,46 +193,17 @@ func CheckError(err error) {
 	}
 }
 
-func SendSomething(contact AddressTriple, conn *net.UDPConn) { //written for test purposes
-	ServerAddr, err := net.ResolveUDPAddr("udp", contact.Ip+":"+contact.Port)
-	CheckError(err)
-	fmt.Println("beep")
-	Info := &pb.REQUEST_PING{ID: "123"}
-	Container := &pb.Container_RequestPing{RequestPing: Info}
-	Data := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, Attachment: Container}
-	Sendstuff(EncodeContainer(Data), conn, ServerAddr)
+/*	testing of the router-table
+	/*id:= "1010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010"
+	contact := AddressTriple{"127.0.0.1", "9000", GenerateRandID()}
+	contact2 := AddressTriple{"127.0.0.1", "9000", id}
+	routingtable := CreateAllWorkersForRoutingTable(K, 160, 5, GenerateRandID())
+	routingtable.GiveOrder(OrderForRoutingTable{ADD, contact, false})
+	routingtable.GiveOrder(OrderForRoutingTable{ADD, contact2, false})
 
-}
-func Sendstuff(data []byte, conn *net.UDPConn, addr *net.UDPAddr) { //written for test purposes
-	buf := []byte(data)
-	_, err := conn.WriteToUDP(buf, addr)
-	if err != nil {
-		fmt.Println(data, err)
+	contactss:=routingtable.FindKClosest(id)
+	for _, element := range contactss{
+		fmt.Println(element)
 	}
-}
 
-//Kademlia Documentations
-/*
-	This RPC involves one node sending a PING message to another, which presumably replies with a PONG.
-	This has a two-fold effect: the recipient of the PING must update the bucket corresponding to the sender;
-	and, if there is a reply, the sender must update the bucket appropriate to the recipient.
-	All RPC packets are required to carry an RPC identifier assigned by the sender and echoed in the reply.
-	This is a quasi-random number of length B (160 bits).
-*/ //Ping
-/*
-The FIND_NODE RPC includes a 160-bit key. The recipient of the RPC returns up to k triples (IP address, port, nodeID)
-for the contacts that it knows to be closest to the key.
-The recipient must return k triples if at all possible.
-It may only return fewer than k if it is returning all of the contacts that it has knowledge of.
-This is a primitive operation, not an iterative one.
-*/ //Find_Contact
-/*
-A FIND_VALUE RPC includes a B=160-bit key. If a corresponding value is present on the recipient,
-the associated data is returned. Otherwise the RPC is equivalent to a FIND_NODE and a set of k triples is returned.
-This is a primitive operation, not an iterative one.
-*/ //Find_data
-/*
-The sender of the STORE RPC provides a key and a block of data and requires that
-the recipient store the data and make it available for later retrieval by that key (So just store it in rt?).
-This is a primitive operation, not an iterative one.
-*/ //Store
+*/

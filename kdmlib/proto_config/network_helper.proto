@@ -20,10 +20,11 @@ message RETURN_PING {
 }
 message RETURN_CONTACTS {
     message CONTACT_INFO {
-        string ID = 1;
-        string IP = 2;
-        string PORT =3;
+        string IP = 1;
+        string PORT =2;
+        string ID = 3;
     }
+
     repeated CONTACT_INFO contact_info = 1;
 }
 message RETURN_DATA{
@@ -33,8 +34,6 @@ message RETURN_STORE
 {
     string VALUE = 1;
 }
-
-
 message Container {
     string REQUEST_TYPE = 1;
     string  REQUEST_ID = 2;
