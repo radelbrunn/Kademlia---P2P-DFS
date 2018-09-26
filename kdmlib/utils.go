@@ -4,8 +4,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -169,4 +171,14 @@ func InsertAndSort(contactList []AddressTriple, item AddressTriple) []AddressTri
 		}
 	}
 	return []AddressTriple{}
+}
+
+func ConvertToUDPAddr(contact AddressTriple) *net.UDPAddr {
+	addr, err := net.ResolveUDPAddr("udp", contact.Ip)
+
+	if err != nil {
+		log.Fatal("Error: ", err)
+	} else {
+		return addr
+	}
 }

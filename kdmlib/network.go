@@ -21,10 +21,12 @@ const (
 
 type Network struct {
 	kademlia *Kademlia
+	rt       RoutingTable
 }
 
-func InitializeNetwork(port int) *Network {
+func InitializeNetwork(port int, rt RoutingTable) *Network {
 	network := &Network{}
+	network.rt = rt
 	network.UDPConnection(port)
 	return network
 }
@@ -102,6 +104,7 @@ func (network *Network) Handler(container *pb.Container, addr *net.UDPAddr) {
 		break
 	}
 }
+
 func (network *Network) SendPing(addr *net.UDPAddr) {
 	myID := network.kademlia.nodeId
 	Info := &pb.REQUEST_PING{ID: myID}
@@ -109,14 +112,14 @@ func (network *Network) SendPing(addr *net.UDPAddr) {
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, Attachment: Data}
 	network.SendData(Container, addr)
 }
-func (network *Network) SendContactRequest(addr *net.UDPAddr, contactID string) {
+func (network *Network) SendFindContactRequest(addr *net.UDPAddr, contactID string, returnChannel chan interface{}) {
 	Info := &pb.REQUEST_CONTACT{ID: contactID}
 	Data := &pb.Container_RequestContact{RequestContact: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, Attachment: Data}
 	network.SendData(Container, addr)
 }
-func (network *Network) SendDataRequest(addr *net.UDPAddr, HASH string) {
-	Info := &pb.REQUEST_DATA{KEY: HASH}
+func (network *Network) SendFindDataRequest(addr *net.UDPAddr, hash string, returnChannel chan interface{}) {
+	Info := &pb.REQUEST_DATA{KEY: hash}
 	Data := &pb.Container_RequestData{RequestData: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, Attachment: Data}
 	network.SendData(Container, addr)
@@ -134,8 +137,8 @@ func (network *Network) ReturnPing(addr *net.UDPAddr) {
 	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Ping, Attachment: Data}
 	network.SendData(Container, addr)
 }
-func (network *Network) ReturnContactRequest(addr *net.UDPAddr, contactID string) {
-	closestContacts := network.node.rt.FindKClosest(contactID)
+func (network *Network) ReturnFindContactRequest(addr *net.UDPAddr, contactID string) {
+	closestContacts := network.rt.FindKClosest(contactID)
 	contactListReply := []*pb.RETURN_CONTACTS_CONTACT_INFO{}
 	for i := range closestContacts {
 		contactReply := &pb.RETURN_CONTACTS_CONTACT_INFO{IP: closestContacts[i].Triple.Ip, PORT: closestContacts[i].Triple.Port,
@@ -148,7 +151,7 @@ func (network *Network) ReturnContactRequest(addr *net.UDPAddr, contactID string
 	network.SendData(Container, addr)
 
 }
-func (network *Network) ReturnDataRequest(addr *net.UDPAddr, DataID string, contactID string) {
+func (network *Network) ReturnFindDataRequest(addr *net.UDPAddr, DataID string, contactID string) {
 
 	//if network.node.fileUtils.ReadFileFromOS(DataID) !=nil {
 
