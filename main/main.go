@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	//StartKademlia()
+	StartKademlia()
 	//networktest()
 }
 

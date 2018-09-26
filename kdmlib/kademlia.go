@@ -1,53 +1,143 @@
 package kdmlib
 
+import (
+	"fmt"
+	"reflect"
+)
+
 type Kademlia struct {
-	nodeId  string
-	rt      RoutingTable
-	network Network
-	alpha   int
-	k       int
+	closest            []AddressTriple
+	asked              map[AddressTriple]bool
+	nodeId             string
+	rt                 RoutingTable
+	network            Network
+	alpha              int
+	k                  int
+	goroutines         int
+	identicalCalls     int
+	identicalThreshold int
 }
 
 func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int) *Kademlia {
 	kademlia := &Kademlia{}
 	kademlia.network = *nw
-
+	kademlia.asked = make(map[AddressTriple]bool)
 	kademlia.nodeId = GenerateRandID()
 	kademlia.rt = CreateAllWorkersForRoutingTable(k, 160, 5, nodeId)
 	kademlia.alpha = alpha
 	kademlia.k = k
+	kademlia.goroutines = 0
+	kademlia.identicalCalls = 0
+	kademlia.identicalThreshold = alpha
 
-	//kademlia.rt.GiveOrder(OrderForRoutingTable{1, })
 	return kademlia
 }
 
-func (kademlia *Kademlia) LookupContact(target *AddressTriple) {
-	//rt, ch := CreateAllWorkersForRoutingTable(kademlia.k, 160, 5, kademlia.node_id)
-	//kademlia.closestContacts = NewContactCandidates()
-
-	/*
-		for i := 0; i < kademlia.alpha; i++ {
-			//TODO
-			fmt.Println("Send Find Contact request")
+func (kademlia *Kademlia) GetNextNode() *AddressTriple {
+	for index := range kademlia.closest {
+		if kademlia.asked[kademlia.closest[index]] != true {
+			kademlia.asked[kademlia.closest[index]] = true
+			return &kademlia.closest[index]
 		}
-	*/
+	}
+	return nil
 }
 
-//hash is the hashed filename???
-func (kademlia *Kademlia) LookupData(hash string) {
-	/*
-		kademlia.closestContacts = NewContactCandidates()
+func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
+	answerChannel := make(chan interface{}, kademlia.alpha)
+	kademlia.closest = []AddressTriple{}
 
-		//TODO Convert hash to a *KademliaID
-		//kademlia.closestContacts.Append(kademlia.rt.FindClosestContacts(hash, kademlia.alpha))
+	for _, e := range kademlia.rt.FindKClosest(target.Id) {
+		kademlia.closest = append(kademlia.closest, e.Triple)
+	}
 
-		for i := 0; i < kademlia.alpha; i++ {
-			//TODO
-			fmt.Println("Send Find Data")
+	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
+		fmt.Println("Sending find contact message")
+		kademlia.goroutines++
+		kademlia.network.SendFindContactMessage(target.Id, &kademlia.closest[i], answerChannel)
+
+		kademlia.asked[kademlia.closest[i]] = true
+	}
+
+	for {
+		select {
+		case answer := <-answerChannel:
+			if reflect.TypeOf(answer) == reflect.TypeOf(kademlia.closest) {
+				//TODO update closest contacts
+				//TODO: handle exit on same occurrence after update
+				nextNode := kademlia.GetNextNode()
+				if nextNode != nil {
+					kademlia.network.SendFindContactMessage(target.Id, nextNode, answerChannel)
+				}
+			}
+		default:
+			if kademlia.goroutines == 0 {
+				return kademlia.closest
+			}
 		}
-	*/
+	}
+}
+
+func (kademlia *Kademlia) LookupData(hash string) string {
+	answerChannel := make(chan interface{}, kademlia.alpha)
+	kademlia.closest = []AddressTriple{}
+
+	for _, e := range kademlia.rt.FindKClosest(hash) {
+		kademlia.closest = append(kademlia.closest, e.Triple)
+	}
+
+	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
+		fmt.Println("Sending find data message")
+		kademlia.network.SendFindDataMessage(hash, &kademlia.closest[i], answerChannel)
+
+		kademlia.asked[kademlia.closest[i]] = true
+	}
+
+	for {
+		select {
+		case answer := <-answerChannel:
+			switch answer := answer.(type) {
+			case string:
+				return answer
+
+			case []AddressTriple:
+				//TODO: update closest
+				//TODO: handle exit on same occurrence after update
+				nextNode := kademlia.GetNextNode()
+				if nextNode != nil {
+					kademlia.network.SendFindDataMessage(hash, nextNode, answerChannel)
+				}
+			}
+
+		default:
+			if kademlia.goroutines == 0 {
+				return ""
+			}
+		}
+	}
+
+}
+
+func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target string) {
+	identicalList := true
+	//newList := []AddressTriple{}
+	for i := range kademlia.closest {
+		for j := range newContacts {
+			if kademlia.closest[i].Id == newContacts[j].Id {
+
+			} else {
+				identicalList = false
+			}
+		}
+	}
+
+	if identicalList {
+		kademlia.identicalCalls++
+	} else {
+		kademlia.identicalCalls = 0
+	}
 }
 
 func (kademlia *Kademlia) Store(data []byte) {
-	// TODO
+	// TODO Use Jeremys Library
 }
