@@ -19,9 +19,9 @@ const (
 
 //order to send to routing table
 type OrderForRoutingTable struct {
-	action     int
-	target     AddressTriple
-	fromPinger bool
+	Action     int
+	Target     AddressTriple
+	FromPinger bool
 }
 
 //address and id of a node
@@ -48,29 +48,31 @@ type routingTableAndCache struct {
 }
 
 //triple and distance
-type tripleAndDistance struct {
+type TripleAndDistance struct {
 	Triple   AddressTriple
 	Distance string
 }
 
 //returns a slice of the k closest node to id
-func (routing routingTableAndCache) FindKClosest(id string) []tripleAndDistance {
+func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance {
 	k := routing.k
 	if len(id) != routing.idLength {
 		fmt.Println("the id that you provided has a wrong size")
 		return nil
 	}
-	nodes := make([]tripleAndDistance, len(id)*k)
+	nodes := make([]TripleAndDistance, len(id)*k)
 	table := *routing.routingTable
 	l := 0
+	counter:=0
 	routing.lock.Lock()
 	for i := 0; i < len(id); i++ {
 		for j := table[i].Front(); j != nil; j = j.Next() {
+			counter++
 			if table[i].Len() > 0 && j.Value != nil {
 				triple := j.Value.(AddressTriple)
 				distance, err := computeDistance(triple.Id, id)
-				if err == nil {
-					nodes[l] = tripleAndDistance{triple, distance}
+				if err == nil && len(distance)>0 {
+					nodes[l] = TripleAndDistance{triple, distance}
 					l++
 				}
 			}
@@ -78,14 +80,26 @@ func (routing routingTableAndCache) FindKClosest(id string) []tripleAndDistance 
 		}
 	}
 	routing.lock.Unlock()
+	fmt.Println("before sort")
+	fmt.Println(nodes)
 	sort.Slice(nodes, func(i, j int) bool {
-		if nodes[i].Distance == "" {
+		if len(nodes[i].Distance) == 0  {
 			return false
+		}else if len(nodes[j].Distance) == 0{
+			return true
 		}
 		return nodes[i].Distance < nodes[j].Distance
 	})
 
-	return nodes[:k]
+	fmt.Println("after sort")
+	fmt.Println(nodes)
+	fmt.Println(l)
+	fmt.Println(k)
+	if l<k{
+		return nodes[:l+1]
+	}else{
+		return nodes[:k]
+	}
 }
 
 //read from in, ping address from this channel and send appropriate order to routing table
@@ -135,18 +149,18 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 		//element = *(order.target)
 		//fmt.Println(element.Value.(string))
 		var index int
-		if order.action == ADD {
-			index, _ = firstDifferentBit(order.target.Id, ownId)
+		if order.Action == ADD {
+			index, _ = firstDifferentBit(order.Target.Id, ownId)
 		} else {
-			index, _ = firstDifferentBit(order.target.Id, ownId)
+			index, _ = firstDifferentBit(order.Target.Id, ownId)
 		}
 		//lock the table while modifying it
 		routingTable.lock.Lock()
-		if order.action == ADD {
+		if order.Action == ADD {
 			//if in table then same behavior than bump
-			if isPresentInRoutingTable(routingTable, order.target, ownId) {
+			if isPresentInRoutingTable(routingTable, order.Target, ownId) {
 				for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
-					if ele.Value.(AddressTriple).Id == order.target.Id {
+					if ele.Value.(AddressTriple).Id == order.Target.Id {
 						fmt.Println("already present so pushing this value")
 						(*(routingTable.routingTable))[index].MoveToFront(ele)
 						break
@@ -155,33 +169,33 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 			} else {
 				//if free space add it
 				if (*(routingTable.routingTable))[index].Len() < k {
-					(*(routingTable.routingTable))[index].PushFront(order.target)
+					(*(routingTable.routingTable))[index].PushFront(order.Target)
 				} else {
 					//if order comes from a pinger dont send a new order to the pinger channel
-					if !order.fromPinger {
+					if !order.FromPinger {
 						var last *list.Element
 						for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
 							last = ele
 						}
 						if len(pingerChannel)< cap(pingerChannel){
-							pingerChannel <- OrderForPinger{last.Value.(AddressTriple), order.target, true}
+							pingerChannel <- OrderForPinger{last.Value.(AddressTriple), order.Target, true}
 						}else{
-							ordersToSend.PushBack(OrderForPinger{last.Value.(AddressTriple), order.target, true})
+							ordersToSend.PushBack(OrderForPinger{last.Value.(AddressTriple), order.Target, true})
 						}
 					} else {
 						(*(routingTable.cache))[index].PushFront(list.Element{})
 					}
 				}
 			}
-		} else if order.action == REMOVE {
+		} else if order.Action == REMOVE {
 			//(*(routingTable.routingTable))[index].Remove(order.target)
 			for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
-				if ele.Value.(AddressTriple).Id == order.target.Id {
+				if ele.Value.(AddressTriple).Id == order.Target.Id {
 					(*(routingTable.routingTable))[index].Remove(ele)
 					break
 				}
 			}
-		} else if order.action == CACHE {
+		} else if order.Action == CACHE {
 			//(*(routingTable.cache))[index].PushFront(*(order.target))
 		}
 
@@ -278,7 +292,7 @@ func (table RoutingTable) GiveOrder (order OrderForRoutingTable){
 	table.lock.Unlock()
 }
 
-func (table RoutingTable) FindKClosest (id string) (tripleAndDistance []tripleAndDistance){
+func (table RoutingTable) FindKClosest (id string) (tripleAndDistance []TripleAndDistance){
 	return table.routingtable.FindKClosest(id)
 }
 
