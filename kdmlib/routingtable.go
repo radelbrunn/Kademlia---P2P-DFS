@@ -80,8 +80,6 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 		}
 	}
 	routing.lock.Unlock()
-	fmt.Println("before sort")
-	fmt.Println(nodes)
 	sort.Slice(nodes, func(i, j int) bool {
 		if len(nodes[i].Distance) == 0  {
 			return false
@@ -91,10 +89,6 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 		return nodes[i].Distance < nodes[j].Distance
 	})
 
-	fmt.Println("after sort")
-	fmt.Println(nodes)
-	fmt.Println(l)
-	fmt.Println(k)
 	if l<k{
 		return nodes[:l+1]
 	}else{
