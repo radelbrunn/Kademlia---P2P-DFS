@@ -19,9 +19,10 @@ type Network struct {
 func Initialize_Network(port int) *Network {
 	//TODO: Add network stuff
 	network := &Network{}
-	UDPConnection(port)
+	//UDPConnection(port)
 	return network
 }
+
 func UDPConnection(port int) { //TODO: learn how to properly use channels
 	ServerAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(port))
 	CheckError(err)
@@ -63,10 +64,10 @@ func SendSomething(contact AddressTriple, Conn *net.UDPConn) {
 func (network *Network) SendPingMessage(contact AddressTriple) {
 
 }
-func (network *Network) SendFindContactMessage(contact *AddressTriple) {
+func (network *Network) SendFindContactMessage(target string, contact *AddressTriple, returnChannel chan interface{}) {
 	// TODO
 }
-func (network *Network) SendFindDataMessage(hash string) {
+func (network *Network) SendFindDataMessage(hash string, contact *AddressTriple, returnChannel chan interface{}) {
 	// TODO
 }
 func (network *Network) SendStoreMessage(data []byte) {
