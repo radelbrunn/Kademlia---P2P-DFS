@@ -64,10 +64,10 @@ func SendSomething(contact AddressTriple, Conn *net.UDPConn) {
 func (network *Network) SendPingMessage(contact AddressTriple) {
 
 }
-func (network *Network) SendFindContactMessage(contact *AddressTriple) {
+func (network *Network) SendFindContactMessage(target string, contact *AddressTriple, returnChannel chan interface{}) {
 	// TODO
 }
-func (network *Network) SendFindDataMessage(hash string) {
+func (network *Network) SendFindDataMessage(hash string, contact *AddressTriple, returnChannel chan interface{}) {
 	// TODO
 }
 func (network *Network) SendStoreMessage(data []byte) {
