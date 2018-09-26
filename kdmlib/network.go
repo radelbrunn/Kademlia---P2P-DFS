@@ -19,7 +19,7 @@ type Network struct {
 func Initialize_Network(port int) *Network {
 	//TODO: Add network stuff
 	network := &Network{}
-	UDPConnection(port)
+	//UDPConnection(port)
 	return network
 }
 

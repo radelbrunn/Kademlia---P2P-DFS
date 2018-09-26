@@ -6,14 +6,16 @@ import (
 )
 
 type Kademlia struct {
-	closest    []AddressTriple
-	asked      map[AddressTriple]bool
-	nodeId     string
-	rt         RoutingTable
-	network    Network
-	alpha      int
-	k          int
-	goroutines int
+	closest            []AddressTriple
+	asked              map[AddressTriple]bool
+	nodeId             string
+	rt                 RoutingTable
+	network            Network
+	alpha              int
+	k                  int
+	goroutines         int
+	identicalCalls     int
+	identicalThreshold int
 }
 
 func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int) *Kademlia {
@@ -25,14 +27,17 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int) *Kademlia
 	kademlia.alpha = alpha
 	kademlia.k = k
 	kademlia.goroutines = 0
+	kademlia.identicalCalls = 0
+	kademlia.identicalThreshold = alpha
+
 	return kademlia
 }
 
 func (kademlia *Kademlia) GetNextNode() *AddressTriple {
-	for i := range kademlia.closest {
-		if kademlia.asked[kademlia.closest[i]] != true {
-			kademlia.asked[kademlia.closest[i]] = true
-			return &kademlia.closest[i]
+	for index := range kademlia.closest {
+		if kademlia.asked[kademlia.closest[index]] != true {
+			kademlia.asked[kademlia.closest[index]] = true
+			return &kademlia.closest[index]
 		}
 	}
 	return nil
@@ -111,6 +116,26 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 		}
 	}
 
+}
+
+func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target string) {
+	identicalList := true
+	//newList := []AddressTriple{}
+	for i := range kademlia.closest {
+		for j := range newContacts {
+			if kademlia.closest[i].Id == newContacts[j].Id {
+
+			} else {
+				identicalList = false
+			}
+		}
+	}
+
+	if identicalList {
+		kademlia.identicalCalls++
+	} else {
+		kademlia.identicalCalls = 0
+	}
 }
 
 func (kademlia *Kademlia) Store(data []byte) {

@@ -2,10 +2,12 @@ package kdmlib
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -118,4 +120,51 @@ func HashKademliaID(fileName string) string {
 		f = f + "01"
 	}
 	return f
+}
+
+func CalculateDistance(id1 string, id2 string) (string, error) {
+	if len(id1) != len(id2) {
+		return "", errors.New("not the right distance")
+	} else {
+		var sb strings.Builder
+		for i := 0; i < len(id1); i++ {
+			if id1[i] == id2[i] {
+				sb.WriteString("0")
+			} else {
+				sb.WriteString("1")
+			}
+		}
+		return sb.String(), nil
+	}
+}
+
+func DistanceLess(comp string, reference string) (bool, error) {
+	if len(comp) != len(reference) {
+		return false, errors.New("not the right distance")
+	} else {
+		for i := 0; i < len(reference); i++ {
+			if int(comp[i]) > int(reference[i]) {
+				return false, nil
+			}
+			if int(comp[i]) < int(reference[i]) {
+				return true, nil
+			}
+		}
+		return true, nil
+	}
+}
+
+func InsertAndSort(contactList []AddressTriple, item AddressTriple) []AddressTriple {
+	if len(contactList) == 0 {
+		contactList = append(contactList, item)
+	} else {
+		for index := range contactList {
+			less, _ := DistanceLess(item.Id, contactList[index].Id)
+			if less {
+				contactList = append(contactList, AddressTriple{})
+
+			}
+		}
+	}
+	return []AddressTriple{}
 }
