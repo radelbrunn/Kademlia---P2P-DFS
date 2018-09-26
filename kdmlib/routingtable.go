@@ -63,7 +63,7 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 	nodes := make([]TripleAndDistance, len(id)*k)
 	table := *routing.routingTable
 	l := 0
-	counter:=0
+	counter := 0
 	routing.lock.Lock()
 	for i := 0; i < len(id); i++ {
 		for j := table[i].Front(); j != nil; j = j.Next() {
@@ -71,7 +71,7 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 			if table[i].Len() > 0 && j.Value != nil {
 				triple := j.Value.(AddressTriple)
 				distance, err := computeDistance(triple.Id, id)
-				if err == nil && len(distance)>0 {
+				if err == nil && len(distance) > 0 {
 					nodes[l] = TripleAndDistance{triple, distance}
 					l++
 				}
@@ -81,17 +81,17 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 	}
 	routing.lock.Unlock()
 	sort.Slice(nodes, func(i, j int) bool {
-		if len(nodes[i].Distance) == 0  {
+		if len(nodes[i].Distance) == 0 {
 			return false
-		}else if len(nodes[j].Distance) == 0{
+		} else if len(nodes[j].Distance) == 0 {
 			return true
 		}
 		return nodes[i].Distance < nodes[j].Distance
 	})
 
-	if l<k{
+	if l < k {
 		return nodes[:l+1]
-	}else{
+	} else {
 		return nodes[:k]
 	}
 }
@@ -136,7 +136,7 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 	ordersToSend := list.New()
 	for order := range channel {
 		//fill the pinger channel if it is not full
-		for ordersToSend.Len()>0 && (cap(pingerChannel)> len(pingerChannel)) {
+		for ordersToSend.Len() > 0 && (cap(pingerChannel) > len(pingerChannel)) {
 			pingerChannel <- ordersToSend.Remove(ordersToSend.Front()).(OrderForPinger)
 		}
 		//var element list.Element
@@ -171,9 +171,9 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 						for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
 							last = ele
 						}
-						if len(pingerChannel)< cap(pingerChannel){
+						if len(pingerChannel) < cap(pingerChannel) {
 							pingerChannel <- OrderForPinger{last.Value.(AddressTriple), order.Target, true}
-						}else{
+						} else {
 							ordersToSend.PushBack(OrderForPinger{last.Value.(AddressTriple), order.Target, true})
 						}
 					} else {
@@ -276,21 +276,21 @@ func computeDistance(id1 string, id2 string) (string, error) {
 
 type RoutingTable struct {
 	routingChannel chan OrderForRoutingTable
-	lock *sync.Mutex
-	routingtable routingTableAndCache
+	lock           *sync.Mutex
+	routingtable   routingTableAndCache
 }
 
-func (table RoutingTable) GiveOrder (order OrderForRoutingTable){
+func (table RoutingTable) GiveOrder(order OrderForRoutingTable) {
 	table.lock.Lock()
 	table.routingChannel <- order
 	table.lock.Unlock()
 }
 
-func (table RoutingTable) FindKClosest (id string) (tripleAndDistance []TripleAndDistance){
+func (table RoutingTable) FindKClosest(id string) (tripleAndDistance []TripleAndDistance) {
 	return table.routingtable.FindKClosest(id)
 }
 
-func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ownId string) (RoutingTable) {
+func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ownId string) RoutingTable {
 	routingChannel := make(chan OrderForRoutingTable, 1000)
 	pingingChannel := make(chan OrderForPinger, 1000)
 	routingTable := createRoutingTable(k, idLegnth)
@@ -301,5 +301,5 @@ func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ow
 		go pingWorker(pingingChannel, routingChannel, channelLocker)
 	}
 
-	return RoutingTable{routingChannel,channelLocker,routingTable}
+	return RoutingTable{routingChannel, channelLocker, routingTable}
 }
