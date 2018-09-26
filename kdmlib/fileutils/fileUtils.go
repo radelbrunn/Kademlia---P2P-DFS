@@ -39,7 +39,7 @@ func fileHandler(order Order) {
 	if order.action == ADD {
 
 		//checks if the file is already present
-		if _, err := os.Stat(fileDirectory+string(filepath.Separator)+order.name); os.IsNotExist(err) {
+		if _, err := os.Stat(fileDirectory+order.name); os.IsNotExist(err) {
 			err := ioutil.WriteFile(fileDirectory+string(os.PathSeparator)+order.name, order.content, 0644)
 			if err != nil {
 				fmt.Println("something went wrong while creating file " + order.name)
