@@ -63,7 +63,7 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 	nodes := make([]TripleAndDistance, len(id)*k)
 	table := *routing.routingTable
 	l := 0
-	counter:=0
+	counter := 0
 	routing.lock.Lock()
 	for i := 0; i < len(id); i++ {
 		for j := table[i].Front(); j != nil; j = j.Next() {
@@ -71,7 +71,7 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 			if table[i].Len() > 0 && j.Value != nil {
 				triple := j.Value.(AddressTriple)
 				distance, err := computeDistance(triple.Id, id)
-				if err == nil && len(distance)>0 {
+				if err == nil && len(distance) > 0 {
 					nodes[l] = TripleAndDistance{triple, distance}
 					l++
 				}
@@ -81,17 +81,17 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 	}
 	routing.lock.Unlock()
 	sort.Slice(nodes, func(i, j int) bool {
-		if len(nodes[i].Distance) == 0  {
+		if len(nodes[i].Distance) == 0 {
 			return false
-		}else if len(nodes[j].Distance) == 0{
+		} else if len(nodes[j].Distance) == 0 {
 			return true
 		}
 		return nodes[i].Distance < nodes[j].Distance
 	})
 
-	if l<k{
+	if l < k {
 		return nodes[:l]
-	}else{
+	} else {
 		return nodes[:k]
 	}
 }
@@ -136,7 +136,7 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 	ordersToSend := list.New()
 	for order := range channel {
 		//fill the pinger channel if it is not full
-		for ordersToSend.Len()>0 && (cap(pingerChannel)> len(pingerChannel)) {
+		for ordersToSend.Len() > 0 && (cap(pingerChannel) > len(pingerChannel)) {
 			pingerChannel <- ordersToSend.Remove(ordersToSend.Front()).(OrderForPinger)
 		}
 		//var element list.Element
@@ -151,7 +151,7 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 		if order.Action == ADD {
 			//if in table then same behavior than bump
 			if isPresentInRoutingTable(routingTable, order.Target, ownId) {
-				bumpElement(routingTable,index,order)
+				bumpElement(routingTable, index, order)
 			} else {
 				//if free space add it
 				if (*(routingTable.routingTable))[index].Len() < k {
@@ -159,14 +159,14 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 				} else {
 					//if order comes from a pinger dont send a new order to the pinger channel
 					if !order.FromPinger {
-						sendToPinger(routingTable,index,order,pingerChannel,ordersToSend)
+						sendToPinger(routingTable, index, order, pingerChannel, ordersToSend)
 					} else {
 						(*(routingTable.cache))[index].PushFront(list.Element{})
 					}
 				}
 			}
 		} else if order.Action == REMOVE {
-			removeFromRoutingTable(routingTable,index,order)
+			removeFromRoutingTable(routingTable, index, order)
 		} else if order.Action == CACHE {
 			//(*(routingTable.cache))[index].PushFront(*(order.target))
 		}
@@ -176,19 +176,19 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 
 }
 
-func sendToPinger(routingTable routingTableAndCache,index int , order OrderForRoutingTable,pingerChannel chan OrderForPinger,ordersToSend *list.List){
+func sendToPinger(routingTable routingTableAndCache, index int, order OrderForRoutingTable, pingerChannel chan OrderForPinger, ordersToSend *list.List) {
 	var last *list.Element
 	for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
 		last = ele
 	}
-	if len(pingerChannel)< cap(pingerChannel){
+	if len(pingerChannel) < cap(pingerChannel) {
 		pingerChannel <- OrderForPinger{last.Value.(AddressTriple), order.Target, true}
-	}else{
+	} else {
 		ordersToSend.PushBack(OrderForPinger{last.Value.(AddressTriple), order.Target, true})
 	}
 }
 
-func bumpElement(routingTable routingTableAndCache,index int , order OrderForRoutingTable){
+func bumpElement(routingTable routingTableAndCache, index int, order OrderForRoutingTable) {
 	for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
 		if ele.Value.(AddressTriple).Id == order.Target.Id {
 			fmt.Println("already present so pushing this value")
@@ -198,7 +198,7 @@ func bumpElement(routingTable routingTableAndCache,index int , order OrderForRou
 	}
 }
 
-func removeFromRoutingTable(routingTable routingTableAndCache, index int , order OrderForRoutingTable){
+func removeFromRoutingTable(routingTable routingTableAndCache, index int, order OrderForRoutingTable) {
 	for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
 		if ele.Value.(AddressTriple).Id == order.Target.Id {
 			(*(routingTable.routingTable))[index].Remove(ele)
@@ -258,7 +258,7 @@ func isPresentInRoutingTable(routingTable routingTableAndCache, triple AddressTr
 //return the position of the first different bit
 func firstDifferentBit(address1 string, address2 string) (int, error) {
 	if len(address1) != len(address2) {
-		return -1, errors.New("not the same length")
+		return -1, errors.New("lengths of the IDs are different")
 	}
 	for i := 0; i < len(address1); i++ {
 		letterfrom1 := address1[i]
@@ -272,7 +272,7 @@ func firstDifferentBit(address1 string, address2 string) (int, error) {
 
 func computeDistance(id1 string, id2 string) (string, error) {
 	if len(id1) != len(id2) {
-		return "", errors.New("not the right length")
+		return "", errors.New("lengths of the IDs are different")
 	} else {
 		var sb strings.Builder
 		for i := 0; i < len(id1); i++ {

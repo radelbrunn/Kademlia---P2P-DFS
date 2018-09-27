@@ -126,7 +126,7 @@ func HashKademliaID(fileName string) string {
 
 func CalculateDistance(id1 string, id2 string) (string, error) {
 	if len(id1) != len(id2) {
-		return "", errors.New("not the right distance")
+		return "", errors.New("lengths of the IDs are different")
 	} else {
 		var sb strings.Builder
 		for i := 0; i < len(id1); i++ {
@@ -143,7 +143,7 @@ func CalculateDistance(id1 string, id2 string) (string, error) {
 //Returns true if distance (Comp) is less than (Reference)
 func DistanceLess(comp string, reference string) (bool, error) {
 	if len(comp) != len(reference) {
-		return false, errors.New("not the right distance")
+		return false, errors.New("lengths of the IDs are different")
 	} else {
 		for i := 0; i < len(reference); i++ {
 			if int(comp[i]) > int(reference[i]) {
