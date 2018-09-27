@@ -158,19 +158,24 @@ func DistanceLess(comp string, reference string) (bool, error) {
 }
 
 //Inserts an element into array and sorts it
+//TODO: test this method
 func InsertAndSort(contactList []AddressTriple, item AddressTriple) []AddressTriple {
 	if len(contactList) == 0 {
 		contactList = append(contactList, item)
+		return contactList
 	} else {
 		for index := range contactList {
 			less, _ := DistanceLess(item.Id, contactList[index].Id)
 			if less {
 				contactList = append(contactList, AddressTriple{})
-
+				copy(contactList[index+1:], contactList[index:])
+				contactList[index] = item
+				return contactList
 			}
 		}
+		contactList = append(contactList, item)
+		return contactList
 	}
-	return []AddressTriple{}
 }
 
 func ConvertToUDPAddr(contact AddressTriple) *net.UDPAddr {
