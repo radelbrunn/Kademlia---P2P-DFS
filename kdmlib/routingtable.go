@@ -272,7 +272,7 @@ func firstDifferentBit(address1 string, address2 string) (int, error) {
 
 func computeDistance(id1 string, id2 string) (string, error) {
 	if len(id1) != len(id2) {
-		return "", errors.New("not the right distance")
+		return "", errors.New("not the right length")
 	} else {
 		var sb strings.Builder
 		for i := 0; i < len(id1); i++ {
