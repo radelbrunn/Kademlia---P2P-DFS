@@ -90,7 +90,7 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 	})
 
 	if l<k{
-		return nodes[:l+1]
+		return nodes[:l]
 	}else{
 		return nodes[:k]
 	}
