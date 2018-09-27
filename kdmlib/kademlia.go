@@ -18,12 +18,12 @@ type Kademlia struct {
 	identicalThreshold int
 }
 
-func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int) *Kademlia {
+func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt RoutingTable) *Kademlia {
 	kademlia := &Kademlia{}
 	kademlia.network = *nw
 	kademlia.asked = make(map[AddressTriple]bool)
-	kademlia.nodeId = GenerateRandID()
-	kademlia.rt = CreateAllWorkersForRoutingTable(k, 160, 5, nodeId)
+	kademlia.nodeId = nodeId
+	kademlia.rt = rt
 	kademlia.alpha = alpha
 	kademlia.k = k
 	kademlia.goroutines = 0
@@ -54,7 +54,7 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
 		fmt.Println("Sending find contact message")
 		kademlia.goroutines++
-		kademlia.network.SendFindContactMessage(target.Id, &kademlia.closest[i], answerChannel)
+		kademlia.network.SendFindContactRequest(ConvertToUDPAddr(kademlia.closest[i]), target.Id, answerChannel)
 
 		kademlia.asked[kademlia.closest[i]] = true
 	}
@@ -67,7 +67,7 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 				//TODO: handle exit on same occurrence after update
 				nextNode := kademlia.GetNextNode()
 				if nextNode != nil {
-					kademlia.network.SendFindContactMessage(target.Id, nextNode, answerChannel)
+					kademlia.network.SendFindContactRequest(ConvertToUDPAddr(*nextNode), target.Id, answerChannel)
 				}
 			}
 		default:
@@ -88,7 +88,7 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
 		fmt.Println("Sending find data message")
-		kademlia.network.SendFindDataMessage(hash, &kademlia.closest[i], answerChannel)
+		kademlia.network.SendFindDataRequest(ConvertToUDPAddr(kademlia.closest[i]), hash, answerChannel)
 
 		kademlia.asked[kademlia.closest[i]] = true
 	}
@@ -105,7 +105,7 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 				//TODO: handle exit on same occurrence after update
 				nextNode := kademlia.GetNextNode()
 				if nextNode != nil {
-					kademlia.network.SendFindDataMessage(hash, nextNode, answerChannel)
+					kademlia.network.SendFindDataRequest(ConvertToUDPAddr(*nextNode), hash, answerChannel)
 				}
 			}
 

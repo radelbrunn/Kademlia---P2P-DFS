@@ -90,7 +90,7 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 	})
 
 	if l<k{
-		return nodes[:l]
+		return nodes[:l+1]
 	}else{
 		return nodes[:k]
 	}
@@ -204,7 +204,10 @@ func removeFromRoutingTable(routingTable routingTableAndCache, index int , order
 			(*(routingTable.routingTable))[index].Remove(ele)
 			break
 		}
+
+		routingTable.lock.Unlock()
 	}
+
 }
 
 func ping(address AddressTriple) error {
@@ -285,21 +288,21 @@ func computeDistance(id1 string, id2 string) (string, error) {
 
 type RoutingTable struct {
 	routingChannel chan OrderForRoutingTable
-	lock *sync.Mutex
-	routingtable routingTableAndCache
+	lock           *sync.Mutex
+	routingtable   routingTableAndCache
 }
 
-func (table RoutingTable) GiveOrder (order OrderForRoutingTable){
+func (table RoutingTable) GiveOrder(order OrderForRoutingTable) {
 	table.lock.Lock()
 	table.routingChannel <- order
 	table.lock.Unlock()
 }
 
-func (table RoutingTable) FindKClosest (id string) (tripleAndDistance []TripleAndDistance){
+func (table RoutingTable) FindKClosest(id string) (tripleAndDistance []TripleAndDistance) {
 	return table.routingtable.FindKClosest(id)
 }
 
-func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ownId string) (RoutingTable) {
+func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ownId string) RoutingTable {
 	routingChannel := make(chan OrderForRoutingTable, 1000)
 	pingingChannel := make(chan OrderForPinger, 1000)
 	routingTable := createRoutingTable(k, idLegnth)
@@ -310,5 +313,5 @@ func CreateAllWorkersForRoutingTable(k int, idLegnth int, numberOfPinger int, ow
 		go pingWorker(pingingChannel, routingChannel, channelLocker)
 	}
 
-	return RoutingTable{routingChannel,channelLocker,routingTable}
+	return RoutingTable{routingChannel, channelLocker, routingTable}
 }

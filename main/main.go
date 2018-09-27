@@ -1,93 +1,18 @@
 package main
 
 import (
-	"Kademlia---P2P-DFS/github.com/golang/protobuf/proto"
 	"Kademlia---P2P-DFS/kdmlib"
-	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
-	"fmt"
-	"net"
-	"time"
 )
 
 func main() {
 	StartKademlia()
-	//networktest()
 }
 
 func StartKademlia() {
-	id := kdmlib.GenerateRandID()
-	port := 44444 //Need high port number
-	nw := kdmlib.Initialize_Network(port)
-	kademlia := kdmlib.NewKademliaInstance(nw, id, kdmlib.ALPHA, kdmlib.K)
-
-	fmt.Println(kademlia)
-}
-
-func networktest() {
-
-	id := kdmlib.GenerateIDFromHex("ffffffff00000000000000000000000000000000")
-	//channel := make(chan interface{})
-	contact := kdmlib.AddressTriple{"localhost", "9000", id}
-	serverAddr, err := net.ResolveUDPAddr("udp", contact.Ip+":"+contact.Port)
-	kdmlib.CheckError(err)
-	serverConn, err := net.ListenUDP("udp", serverAddr)
-	kdmlib.CheckError(err)
-	defer serverConn.Close()
-	buf := make([]byte, 4096)
-
-	go kdmlib.SendSomething(contact, serverConn)
-
-	for {
-		n, _, err := serverConn.ReadFromUDP(buf) //add addr
-
-		packet := &pb.Package{}
-		err = proto.Unmarshal(buf[0:n], packet)
-		if err != nil {
-			fmt.Println("Error: ", err)
-		}
-
-		Handler(packet, serverConn, serverAddr)
-	}
-
-}
-func Handler(packet *pb.Package, serverConn *net.UDPConn, addr *net.UDPAddr) {
-
-	switch packet.Id {
-	case "Request":
-		switch packet.Type {
-		case "SendSomething":
-			fmt.Println("Received a:", packet.Id, "with type:", packet.Type, "from: ", addr)
-			//Create appropriate pack with belonging data and ship it out
-			pack := &pb.Package{Id: "Return", Type: "ReturnSomething", Message: "TEST", Time: time.Now().String()}
-			fmt.Println("Returning a:", pack.Id, "with type:", pack.Type, "to: ", addr)
-			kdmlib.SendData(kdmlib.PackageToMarshal(pack), serverConn, addr)
-			break
-		case "Ping":
-			break
-		case "FindContact":
-			break
-		case "FindData":
-			break
-		case "Store":
-			break
-		}
-		break
-	case "Return":
-		switch packet.Type {
-		case "ReturnSomething":
-			fmt.Println("Received a: ", packet.Id, "with type:", packet.Type, "from: ", addr)
-			break
-		case "Ping":
-			break
-		case "Contact":
-			break
-		case "Data":
-			break
-		case "Store":
-			break
-		}
-		break
-	}
+	nodeId := kdmlib.GenerateRandID()
+	rt := kdmlib.CreateAllWorkersForRoutingTable(kdmlib.K, kdmlib.IDLENGTH, 5, nodeId)
+	nw := kdmlib.InitializeNetwork(12000, rt)
+	kdmlib.NewKademliaInstance(nw, nodeId, kdmlib.ALPHA, kdmlib.K, rt)
 }
 
 /* ROUTING TABLE TEST

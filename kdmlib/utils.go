@@ -4,8 +4,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -138,6 +140,7 @@ func CalculateDistance(id1 string, id2 string) (string, error) {
 	}
 }
 
+//Returns true if distance (Comp) is less than (Reference)
 func DistanceLess(comp string, reference string) (bool, error) {
 	if len(comp) != len(reference) {
 		return false, errors.New("not the right distance")
@@ -154,6 +157,7 @@ func DistanceLess(comp string, reference string) (bool, error) {
 	}
 }
 
+//Inserts an element into array and sorts it
 func InsertAndSort(contactList []AddressTriple, item AddressTriple) []AddressTriple {
 	if len(contactList) == 0 {
 		contactList = append(contactList, item)
@@ -167,4 +171,14 @@ func InsertAndSort(contactList []AddressTriple, item AddressTriple) []AddressTri
 		}
 	}
 	return []AddressTriple{}
+}
+
+func ConvertToUDPAddr(contact AddressTriple) *net.UDPAddr {
+	addr, err := net.ResolveUDPAddr("udp", contact.Ip)
+
+	if err != nil {
+		log.Fatal("Error: ", err)
+	} else {
+		return addr
+	}
 }
