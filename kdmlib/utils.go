@@ -178,6 +178,7 @@ func ConvertToUDPAddr(contact AddressTriple) *net.UDPAddr {
 
 	if err != nil {
 		log.Fatal("Error: ", err)
+		return nil
 	} else {
 		return addr
 	}
