@@ -54,7 +54,7 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
 		fmt.Println("Sending find contact message")
 		kademlia.goroutines++
-		kademlia.network.SendFindContactRequest(ConvertToUDPAddr(kademlia.closest[i]), target.Id, answerChannel)
+		kademlia.network.SendFindContact(ConvertToUDPAddr(kademlia.closest[i]), target.Id, answerChannel)
 
 		kademlia.asked[kademlia.closest[i]] = true
 	}
@@ -67,7 +67,7 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 				//TODO: handle exit on same occurrence after update
 				nextNode := kademlia.GetNextNode()
 				if nextNode != nil {
-					kademlia.network.SendFindContactRequest(ConvertToUDPAddr(*nextNode), target.Id, answerChannel)
+					kademlia.network.SendFindContact(ConvertToUDPAddr(*nextNode), target.Id, answerChannel)
 				}
 			}
 		default:
@@ -88,7 +88,7 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
 		fmt.Println("Sending find data message")
-		kademlia.network.SendFindDataRequest(ConvertToUDPAddr(kademlia.closest[i]), hash, answerChannel)
+		kademlia.network.SendFindData(ConvertToUDPAddr(kademlia.closest[i]), hash, answerChannel)
 
 		kademlia.asked[kademlia.closest[i]] = true
 	}
@@ -105,7 +105,7 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 				//TODO: handle exit on same occurrence after update
 				nextNode := kademlia.GetNextNode()
 				if nextNode != nil {
-					kademlia.network.SendFindDataRequest(ConvertToUDPAddr(*nextNode), hash, answerChannel)
+					kademlia.network.SendFindData(ConvertToUDPAddr(*nextNode), hash, answerChannel)
 				}
 			}
 

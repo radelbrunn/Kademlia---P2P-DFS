@@ -46,11 +46,10 @@ func (network *Network) UDPConnection(Port int) { //TODO: learn how to properly 
 	ServerConn, err := net.ListenUDP("udp", ServerAddr)
 	CheckError(err)
 
-	quit := make(chan struct{})
-	go network.Listen(ServerConn, quit)
-	<-quit
+	network.Listen(ServerConn)
+
 }
-func (network *Network) Listen(ServerConn *net.UDPConn, quit chan struct{}) {
+func (network *Network) Listen(ServerConn *net.UDPConn) {
 	//TODO: ADD worker pools
 	buf := make([]byte, 1024)
 	defer ServerConn.Close()
@@ -63,32 +62,40 @@ func (network *Network) Listen(ServerConn *net.UDPConn, quit chan struct{}) {
 		}
 		network.Handler(container, addr)
 	}
-	quit <- struct{}{}
+
 }
 func (network *Network) Handler(container *pb.Container, addr *net.UDPAddr) {
-	/*
-		contactAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:9000") //<-- try this address when testing!
-		CheckError(err)*/
+
+	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:9000") //<-- try this address when testing!
+	CheckError(err)
 	switch container.REQUEST_TYPE {
 	case Request:
 		switch container.REQUEST_ID {
 		case Ping:
 			fmt.Println("Received Ping_Request")
+			//fmt.Println("sleeping for 3s to test timeout ")
+			//time.Sleep(time.Second * 3)
 			network.ReturnPing(addr, container.MSG_ID)
 			fmt.Println("Returned Ping_Request")
 			break
 		case FindContact:
 			fmt.Println("Received FindContact_Request")
+			//fmt.Println("sleeping for 3s to test timeout ")
+			//time.Sleep(time.Second * 3)
 			network.ReturnContact(addr, container.MSG_ID, container.GetRequestContact().ID)
 			fmt.Println("Returned FindContact_Request")
 			break
 		case FindData:
 			fmt.Println("Received FindData_Request")
-			//network.ReturnData(addr, container.MSG_ID, container.GetRequestData().KEY)
+			//fmt.Println("sleeping for 3s to test timeout ")
+			//time.Sleep(time.Second * 3)
+			network.ReturnData(addr, container.MSG_ID, container.GetRequestData().KEY, container.GetRequestContact().ID)
 			fmt.Println("Returned FindData_Request")
 			break
 		case Store:
 			fmt.Println("Received Store_Request")
+			//fmt.Println("sleeping for 3s to test timeout ")
+			//time.Sleep(time.Second * 3)
 			network.ReturnStore(addr, container.MSG_ID, container.GetRequestStore().KEY, container.GetRequestStore().VALUE)
 			fmt.Println("Returned Store_Request")
 			break
@@ -98,6 +105,10 @@ func (network *Network) Handler(container *pb.Container, addr *net.UDPAddr) {
 		break
 	case Return:
 		returnedRequest := network.takeFromQueue(container.MSG_ID)
+		if returnedRequest == nil {
+			fmt.Println("Timeout")
+			return
+		}
 		switch container.REQUEST_ID {
 		case Ping:
 			fmt.Println("Ping Returned")
@@ -124,7 +135,7 @@ func (network *Network) Handler(container *pb.Container, addr *net.UDPAddr) {
 	}
 }
 
-//You ask something from someone!
+//You ask something from someone! Done!
 func (network *Network) SendPing(addr *net.UDPAddr, returnChannel chan interface{}) {
 	//myID := network.kademlia.nodeId
 	msgID := GenerateRandID()
@@ -171,7 +182,7 @@ func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte
 //Someone ask something from you and you return!
 func (network *Network) ReturnPing(addr *net.UDPAddr, msgID string) {
 	//myID := network.kademlia.nodeId
-	Info := &pb.RETURN_PING{ID: "qwe"}
+	Info := &pb.RETURN_PING{ID: "myID?"}
 	Data := &pb.Container_ReturnPing{ReturnPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
 	network.SendData(Container, addr)
@@ -190,13 +201,15 @@ func (network *Network) ReturnContact(addr *net.UDPAddr, msgID string, contactID
 	network.SendData(Container, addr)
 }
 func (network *Network) ReturnData(addr *net.UDPAddr, msgID string, DataID string, contactID string) {
-
+	//they have to download/I have to send(TCP, another port)?. cannot send data through here!
 	if fileUtilsKademlia.ReadFileFromOS(DataID) != nil {
+		// this needs to be updated later but for small files it should work
 		Value := fileUtilsKademlia.ReadFileFromOS(DataID)
 		Info := &pb.RETURN_DATA{VALUE: Value}
 		Data := &pb.Container_ReturnData{ReturnData: Info}
 		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: msgID, Attachment: Data}
 		network.SendData(Container, addr)
+
 	} else {
 		network.ReturnContact(addr, msgID, contactID)
 	}
@@ -204,6 +217,7 @@ func (network *Network) ReturnData(addr *net.UDPAddr, msgID string, DataID strin
 func (network *Network) ReturnStore(addr *net.UDPAddr, msgID string, key string, value []byte) { //work in progress
 
 	if fileUtilsKademlia.ReadFileFromOS(key) != nil {
+		//I have to download/they have to send(TCP, another port)?. cannot send data through here!
 		fmt.Println("Do something? Data exists?")
 	} else {
 		fmt.Println("Can passed data/value be big? or just 64kb udp package?" +
@@ -211,12 +225,11 @@ func (network *Network) ReturnStore(addr *net.UDPAddr, msgID string, key string,
 	}
 	//check if file already exist, if not, download and reply on the store request.
 	//--------------------------------------
-	/*
-		Info := &pb.RETURN_STORE{VALUE: "Stored"} //i stored the data msg!
-		Data := &pb.Container_ReturnStore{ReturnStore: Info}
-		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Store,MSG_ID:msgID Attachment: Data}
-		network.SendData(Container, addr)
-	*/
+	Info := &pb.RETURN_STORE{VALUE: "Stored"} //i stored the data msg!
+	Data := &pb.Container_ReturnStore{ReturnStore: Info}
+	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Store, MSG_ID: msgID, Attachment: Data}
+	network.SendData(Container, addr)
+
 }
 
 //Someone returns something you previously asked for!
@@ -236,11 +249,11 @@ func ContactReturned(container *pb.Container, returnedRequest chan interface{}) 
 	returnedRequest <- listOfContacts
 }
 func DataReturned(container *pb.Container, returnedRequest chan interface{}) {
-	//Value := container.GetReturnData().VALUE
-	//returnedRequest <- Value
+	Value := container.GetReturnData().VALUE
+	returnedRequest <- Value
 }
 func StoreReturned(container *pb.Container, returnedRequest chan interface{}) {
-	//returnedRequest <- container.GetReturnStore().VALUE
+	returnedRequest <- container.GetReturnStore().VALUE
 }
 
 //helper functions
@@ -278,7 +291,7 @@ func (network *Network) checkForTimeOut(msgID string, timeLimit int, returnChann
 func EncodeContainer(pack *pb.Container) []byte {
 	data, err := proto.Marshal(pack)
 	if err != nil {
-		log.Fatal("marshalling error: ", err)
+		log.Fatal("encoding error: ", err)
 	}
 	return data
 }
