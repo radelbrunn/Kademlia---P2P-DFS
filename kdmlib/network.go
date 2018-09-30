@@ -23,11 +23,12 @@ const (
 )
 
 type Network struct {
-	kademlia  *Kademlia
-	rt        RoutingTable
-	mux       *sync.Mutex
-	queue     map[string]chan interface{} //<-change?
-	timeLimit int
+	kademlia   *Kademlia
+	rt         RoutingTable
+	serverConn *net.UDPConn
+	mux        *sync.Mutex
+	queue      map[string]chan interface{} //<-change?
+	timeLimit  int
 }
 
 func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable) *Network {
@@ -36,6 +37,7 @@ func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable) *Network {
 	network.mux = &sync.Mutex{}
 	network.queue = make(map[string]chan interface{})
 	network.timeLimit = timeOutLimit
+
 	network.UDPConnection(port)
 	return network
 }
@@ -45,16 +47,18 @@ func (network *Network) UDPConnection(Port int) { //TODO: learn how to properly 
 
 	ServerConn, err := net.ListenUDP("udp", ServerAddr)
 	CheckError(err)
-
-	network.Listen(ServerConn)
+	network.serverConn = ServerConn
+	buf := make([]byte, 1024)
+	network.Listen(buf)
 
 }
-func (network *Network) Listen(ServerConn *net.UDPConn) {
+func (network *Network) Listen(buf []byte) {
 	//TODO: ADD worker pools
-	buf := make([]byte, 1024)
-	defer ServerConn.Close()
+
+	defer network.serverConn.Close()
 	for {
-		n, addr, err := ServerConn.ReadFromUDP(buf)
+		n, addr, err := network.serverConn.ReadFromUDP(buf)
+
 		container := &pb.Container{}
 		err = proto.Unmarshal(buf[0:n], container)
 		if err != nil {
@@ -65,14 +69,13 @@ func (network *Network) Listen(ServerConn *net.UDPConn) {
 
 }
 func (network *Network) Handler(container *pb.Container, addr *net.UDPAddr) {
-
-	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:9000") //<-- try this address when testing!
-	CheckError(err)
+	fmt.Println(addr)
 	switch container.REQUEST_TYPE {
 	case Request:
 		switch container.REQUEST_ID {
 		case Ping:
 			fmt.Println("Received Ping_Request")
+			time.Sleep(time.Second * 1)
 			//fmt.Println("sleeping for 3s to test timeout ")
 			//time.Sleep(time.Second * 3)
 			network.ReturnPing(addr, container.MSG_ID)
@@ -132,7 +135,7 @@ func (network *Network) Handler(container *pb.Container, addr *net.UDPAddr) {
 		break
 	default:
 		fmt.Println("Something went horribly wrong! (Request_Type)")
-	}
+	} //update routingtable
 }
 
 //You ask something from someone! Done!
@@ -182,7 +185,7 @@ func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte
 //Someone ask something from you and you return!
 func (network *Network) ReturnPing(addr *net.UDPAddr, msgID string) {
 	//myID := network.kademlia.nodeId
-	Info := &pb.RETURN_PING{ID: "myID?"}
+	Info := &pb.RETURN_PING{ID: "myID??????"}
 	Data := &pb.Container_ReturnPing{ReturnPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
 	network.SendData(Container, addr)
@@ -218,7 +221,7 @@ func (network *Network) ReturnStore(addr *net.UDPAddr, msgID string, key string,
 
 	if fileUtilsKademlia.ReadFileFromOS(key) != nil {
 		//I have to download/they have to send(TCP, another port)?. cannot send data through here!
-		fmt.Println("Do something? Data exists?")
+		fmt.Println("Do something? Data exists?") //add name, order channel
 	} else {
 		fmt.Println("Can passed data/value be big? or just 64kb udp package?" +
 			"Download file(UDP, TCP), TCP is better? more secure?, add to stored-files-list?") //<- a project in itself
@@ -257,18 +260,14 @@ func StoreReturned(container *pb.Container, returnedRequest chan interface{}) {
 }
 
 //helper functions
-func (network *Network) SendData(container *pb.Container, contact *net.UDPAddr) {
-
-	conn, err := net.Dial("udp", contact.IP.String()+":"+strconv.Itoa(contact.Port))
-	CheckError(err)
+func (network *Network) SendData(container *pb.Container, addr *net.UDPAddr) {
 
 	buf := []byte(EncodeContainer(container))
-	_, err = conn.Write(buf)
+	_, err := network.serverConn.WriteToUDP(buf, addr)
 
 	if err != nil {
 		fmt.Println(EncodeContainer(container), err)
 	}
-	defer conn.Close()
 }
 func (network *Network) putInQueue(msgID string, returnChannel chan interface{}) {
 	network.mux.Lock()
@@ -287,6 +286,7 @@ func (network *Network) checkForTimeOut(msgID string, timeLimit int, returnChann
 	network.queue[msgID] = nil
 	network.mux.Unlock()
 	returnChannel <- false
+	//update routingtable
 }
 func EncodeContainer(pack *pb.Container) []byte {
 	data, err := proto.Marshal(pack)
