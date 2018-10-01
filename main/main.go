@@ -2,16 +2,37 @@ package main
 
 import (
 	"Kademlia---P2P-DFS/kdmlib"
+	"fmt"
+	"time"
 )
 
 func main() {
-	StartKademlia()
+	id1 := "00001"
+	id2 := "00010"
+	id3 := "00100"
+	id4 := "01000"
+	routingT := kdmlib.CreateAllWorkersForRoutingTable(20, 5, 5, "00000")
+	//routingT := kdmlib.CreateAllWorkersForRoutingTable(20,160,5,kdmlib.GenerateRandID())
+	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id1}, false})
+	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id2}, false})
+	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id3}, false})
+	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id4}, false})
+	time.Sleep(time.Second)
+	/*fclosests := routingT.FindKClosest("10000")
+	for i:=0;i< len(closests);i++{
+		fmt.Println(closests[i].Distance)
+		fmt.Println(closests[i].Triple)
+	}
+	*/
+	nw := kdmlib.InitializeNetwork(3, 12000, routingT)
+	fmt.Println(nw)
+	//StartKademlia()
 }
 
 func StartKademlia() {
 	nodeId := kdmlib.GenerateRandID()
 	rt := kdmlib.CreateAllWorkersForRoutingTable(kdmlib.K, kdmlib.IDLENGTH, 5, nodeId)
-	nw := kdmlib.InitializeNetwork(12000, rt)
+	nw := kdmlib.InitializeNetwork(3, 12000, rt)
 	kdmlib.NewKademliaInstance(nw, nodeId, kdmlib.ALPHA, kdmlib.K, rt)
 }
 

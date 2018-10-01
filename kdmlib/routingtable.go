@@ -220,6 +220,7 @@ func ping(address AddressTriple) error {
 	//simple write
 	conn.Write([]byte("ping"))
 
+
 	conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 	//simple Read
 	buffer := make([]byte, 1024)
