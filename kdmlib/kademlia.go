@@ -2,7 +2,6 @@ package kdmlib
 
 import (
 	"fmt"
-	"reflect"
 )
 
 type Kademlia struct {
@@ -54,7 +53,7 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
 		fmt.Println("Sending find contact message")
 		kademlia.goroutines++
-		kademlia.network.SendFindContact(ConvertToUDPAddr(kademlia.closest[i]), target.Id, answerChannel)
+		go kademlia.network.SendFindContact(ConvertToUDPAddr(kademlia.closest[i]), target.Id, answerChannel)
 
 		kademlia.asked[kademlia.closest[i]] = true
 	}
@@ -62,12 +61,21 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 	for {
 		select {
 		case answer := <-answerChannel:
-			if reflect.TypeOf(answer) == reflect.TypeOf(kademlia.closest) {
-				//TODO update closest contacts
-				//TODO: handle exit on same occurrence after update
-				nextNode := kademlia.GetNextNode()
-				if nextNode != nil {
-					kademlia.network.SendFindContact(ConvertToUDPAddr(*nextNode), target.Id, answerChannel)
+			switch answer := answer.(type) {
+			case []AddressTriple:
+				kademlia.RefreshClosest(answer, target.Id)
+				if kademlia.identicalCalls > kademlia.identicalThreshold {
+					fmt.Println("Contacts found (multiple consecutive same answers)")
+					return kademlia.closest
+				} else {
+					nextNode := kademlia.GetNextNode()
+					if nextNode != nil {
+						kademlia.goroutines++
+						go kademlia.network.SendFindContact(ConvertToUDPAddr(*nextNode), target.Id, answerChannel)
+					} else {
+						fmt.Println("Thread ended")
+						kademlia.goroutines--
+					}
 				}
 			}
 		default:
@@ -88,7 +96,8 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
 		fmt.Println("Sending find data message")
-		kademlia.network.SendFindData(ConvertToUDPAddr(kademlia.closest[i]), hash, answerChannel)
+		kademlia.goroutines++
+		go kademlia.network.SendFindData(ConvertToUDPAddr(kademlia.closest[i]), hash, answerChannel)
 
 		kademlia.asked[kademlia.closest[i]] = true
 	}
@@ -101,11 +110,20 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 				return answer
 
 			case []AddressTriple:
-				//TODO: update closest
-				//TODO: handle exit on same occurrence after update
-				nextNode := kademlia.GetNextNode()
-				if nextNode != nil {
-					kademlia.network.SendFindData(ConvertToUDPAddr(*nextNode), hash, answerChannel)
+
+				kademlia.RefreshClosest(answer, hash)
+				if kademlia.identicalCalls > kademlia.identicalThreshold {
+					fmt.Println("File not found (multiple consecutive same answers)")
+					return ""
+				} else {
+					nextNode := kademlia.GetNextNode()
+					if nextNode != nil {
+						kademlia.goroutines++
+						go kademlia.network.SendFindContact(ConvertToUDPAddr(*nextNode), hash, answerChannel)
+					} else {
+						fmt.Println("Thread ended")
+						kademlia.goroutines--
+					}
 				}
 			}
 
