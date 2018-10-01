@@ -24,28 +24,27 @@ message RETURN_CONTACTS {
         string PORT =2;
         string ID = 3;
     }
-
     repeated CONTACT_INFO contact_info = 1;
 }
 message RETURN_DATA{
-  string VALUE = 1;
+    bytes VALUE = 1;
 }
-message RETURN_STORE
-{
+message RETURN_STORE{
     string VALUE = 1;
 }
 message Container {
     string REQUEST_TYPE = 1;
-    string  REQUEST_ID = 2;
+    string REQUEST_ID = 2;
+    string MSG_ID = 3;
     oneof attachment {
-        REQUEST_PING request_ping = 3;
-        REQUEST_CONTACT request_contact = 4;
-        REQUEST_DATA request_data= 5;
-        REQUEST_STORE request_store= 6;
-        RETURN_PING return_ping = 7;
-        RETURN_CONTACTS return_contacts = 8;
-        RETURN_DATA return_data = 9;
-        RETURN_STORE return_store = 10;
+        REQUEST_PING request_ping = 4;
+        REQUEST_CONTACT request_contact = 5;
+        REQUEST_DATA request_data= 6;
+        REQUEST_STORE request_store= 7;
+        RETURN_PING return_ping = 8;
+        RETURN_CONTACTS return_contacts = 9;
+        RETURN_DATA return_data = 10;
+        RETURN_STORE return_store = 11;
 
     }
 }

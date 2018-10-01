@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 	"log"
+	"path/filepath"
 )
 
 const fileDirectory = ".files"+string(os.PathSeparator)
