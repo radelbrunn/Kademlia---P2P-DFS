@@ -87,7 +87,7 @@ func (network *Network) RequestHandler(container *pb.Container, addr *net.UDPAdd
 		break
 	case Store:
 		fmt.Println("Received Store_Request")
-		network.ReturnStore(addr, container.MSG_ID, container.GetRequestStore().KEY, container.GetRequestStore().VALUE)
+		//network.ReturnStore(addr, container.MSG_ID, container.GetRequestStore().KEY, container.GetRequestStore().VALUE)
 		fmt.Println("Returned Store_Request")
 		break
 	default:
@@ -104,7 +104,7 @@ func (network *Network) SendPing(addr *net.UDPAddr, returnChannel chan interface
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
-	go network.checkForTimeOut(msgID, network.timeLimit, returnChannel)
+
 }
 func (network *Network) SendFindContact(addr *net.UDPAddr, contactID string, returnChannel chan interface{}) {
 	//msgID := GenerateRandID()
@@ -114,7 +114,6 @@ func (network *Network) SendFindContact(addr *net.UDPAddr, contactID string, ret
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
-	go network.checkForTimeOut(msgID, network.timeLimit, returnChannel)
 }
 func (network *Network) SendFindData(addr *net.UDPAddr, hash string, returnChannel chan interface{}) {
 	msgID := GenerateRandID()
@@ -124,7 +123,6 @@ func (network *Network) SendFindData(addr *net.UDPAddr, hash string, returnChann
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
-	go network.checkForTimeOut(msgID, network.timeLimit, returnChannel)
 }
 func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte, returnChannel chan interface{}) {
 	msgID := GenerateRandID()
@@ -138,7 +136,6 @@ func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
-	go network.checkForTimeOut(msgID, network.timeLimit, returnChannel)
 }
 
 //Someone ask something from you and you return!
@@ -219,6 +216,7 @@ func (network *Network) RequestData(container *pb.Container, addr *net.UDPAddr) 
 
 	conn, err := net.Dial("udp", addr.IP.String()+":"+strconv.Itoa(addr.Port))
 	CheckError(err)
+	conn.SetReadDeadline(time.Now().Add(time.Second * 3))
 	buf := []byte(EncodeContainer(container))
 	_, err = conn.Write(buf)
 	buf = make([]byte, 1024)
@@ -280,13 +278,6 @@ func (network *Network) takeFromQueue(msgID string) (returnedRequest chan interf
 	network.mux.Unlock()
 	return returnedRequest
 }
-func (network *Network) checkForTimeOut(msgID string, timeLimit int, returnChannel chan interface{}) {
-	time.Sleep(time.Duration(timeLimit) * time.Second)
-	network.mux.Lock()
-	network.queue[msgID] = nil
-	network.mux.Unlock()
-	returnChannel <- false
-}
 func EncodeContainer(pack *pb.Container) []byte {
 	data, err := proto.Marshal(pack)
 	if err != nil {
@@ -300,21 +291,3 @@ func CheckError(err error) {
 		os.Exit(0)
 	}
 }
-
-/*	To test this code duplicate this project and insert the following
-	before network.Listen(buf) inside UDPConnection in one of the projects
-	//---------------------test------------------------
-	contactAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:12000") //<-- try this address when testing!
-	CheckError(err)
-
-	for i := 0; i < 10; i++ {
-		fmt.Println(i)
-		answerChannel := make(chan interface{})
-		network.SendPing(contactAddr, answerChannel)
-	}
-	//go network.SendFindContact(contactAddr, "00000", answerChannel)
-	//go network.SendFindData(contactAddr, GenerateRandID(), answerChannel)
-	//go network.SendStoreData(contactAddr, GenerateRandID(), []byte("hello"), answerChannel)
-
-	//-------------------------------------------------
-*/

@@ -18,15 +18,10 @@ func main() {
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id3}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id4}, false})
 	time.Sleep(time.Second)
-	/*fclosests := routingT.FindKClosest("10000")
-	for i:=0;i< len(closests);i++{
-		fmt.Println(closests[i].Distance)
-		fmt.Println(closests[i].Triple)
-	}
-	*/
-	nw := kdmlib.InitializeNetwork(3, 12000, routingT)
+
+	nw := kdmlib.InitializeNetwork(5, 12000, routingT)
 	fmt.Println(nw)
-	//StartKademlia()
+
 }
 
 func StartKademlia() {
