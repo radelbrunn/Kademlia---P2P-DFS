@@ -261,9 +261,9 @@ func firstDifferentBit(address1 string, address2 string) (int, error) {
 		return -1, errors.New("lengths of the IDs are different")
 	}
 	for i := 0; i < len(address1); i++ {
-		letterfrom1 := address1[i]
-		letterfrom2 := address2[i]
-		if letterfrom1 != letterfrom2 {
+		letterFrom1 := address1[i]
+		letterFrom2 := address2[i]
+		if letterFrom1 != letterFrom2 {
 			return i, nil
 		}
 	}
