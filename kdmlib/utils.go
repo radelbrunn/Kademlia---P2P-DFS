@@ -145,15 +145,7 @@ func DistanceLess(comp string, reference string) (bool, error) {
 	if len(comp) != len(reference) {
 		return false, errors.New("lengths of the IDs are different")
 	} else {
-		for i := 0; i < len(reference); i++ {
-			if int(comp[i]) > int(reference[i]) {
-				return false, nil
-			}
-			if int(comp[i]) < int(reference[i]) {
-				return true, nil
-			}
-		}
-		return true, nil
+		return comp <= reference, nil
 	}
 }
 
