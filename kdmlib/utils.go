@@ -21,10 +21,10 @@ const (
 
 //Generates a Random ID, of specified length, given by constant IDLENGTH
 //The returned ID is a bitwise representation
-func GenerateRandID() string {
+func GenerateRandID(seed int64) string {
 
 	id := ""
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(time.Now().UnixNano() - seed)
 	for i := 0; i < IDLENGTH; i++ {
 		id += strconv.Itoa(rand.Intn(2))
 	}

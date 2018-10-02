@@ -6,6 +6,7 @@ import (
 	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"strconv"
@@ -100,7 +101,7 @@ func (network *Network) RequestHandler(container *pb.Container, addr *net.UDPAdd
 //You ask something from someone!
 func (network *Network) SendPing(addr *net.UDPAddr, returnChannel chan interface{}) {
 	//myID := network.kademlia.nodeId
-	msgID := GenerateRandID()
+	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_PING{ID: "asdasd"}
 	Data := &pb.Container_RequestPing{RequestPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
@@ -120,7 +121,7 @@ func (network *Network) SendFindContact(addr *net.UDPAddr, contactID string, ret
 }
 
 func (network *Network) SendFindData(addr *net.UDPAddr, hash string, returnChannel chan interface{}) {
-	msgID := GenerateRandID()
+	msgID := GenerateRandID(int64(rand.Intn(100)))
 	fmt.Println(msgID)
 	Info := &pb.REQUEST_DATA{KEY: hash}
 	Data := &pb.Container_RequestData{RequestData: Info}
@@ -130,7 +131,7 @@ func (network *Network) SendFindData(addr *net.UDPAddr, hash string, returnChann
 }
 
 func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte, returnChannel chan interface{}) {
-	msgID := GenerateRandID()
+	msgID := GenerateRandID(int64(rand.Intn(100)))
 	/*	STORE message must contain in addition to the message ID
 		at least the data to be stored (including its length) and
 		the associated key. As the transport may be UDP, the message needs
