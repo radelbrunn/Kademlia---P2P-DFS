@@ -32,14 +32,16 @@ type Network struct {
 	timeLimit  int
 }
 
-func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable) *Network {
+func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable, test bool) *Network {
 	network := &Network{}
 	network.rt = rt
 	network.mux = &sync.Mutex{}
 	network.queue = make(map[string]chan interface{})
 	network.timeLimit = timeOutLimit
 
-	network.UDPConnection(port)
+	if test {
+		network.UDPConnection(port)
+	}
 	return network
 }
 
