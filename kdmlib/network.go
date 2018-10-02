@@ -39,7 +39,7 @@ func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable, test bool) *
 	network.queue = make(map[string]chan interface{})
 	network.timeLimit = timeOutLimit
 
-	if test {
+	if !test {
 		network.UDPConnection(port)
 	}
 	return network
