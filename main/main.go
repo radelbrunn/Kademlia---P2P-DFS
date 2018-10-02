@@ -3,6 +3,7 @@ package main
 import (
 	"Kademlia---P2P-DFS/kdmlib"
 	"fmt"
+	"math/rand"
 	"time"
 )
 
@@ -25,7 +26,7 @@ func main() {
 }
 
 func StartKademlia() {
-	nodeId := kdmlib.GenerateRandID()
+	nodeId := kdmlib.GenerateRandID(int64(rand.Intn(100)))
 	rt := kdmlib.CreateAllWorkersForRoutingTable(kdmlib.K, kdmlib.IDLENGTH, 5, nodeId)
 	nw := kdmlib.InitializeNetwork(3, 12000, rt)
 	kdmlib.NewKademliaInstance(nw, nodeId, kdmlib.ALPHA, kdmlib.K, rt)
