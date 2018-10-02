@@ -23,13 +23,15 @@ func main() {
 		fmt.Println(nw)
 	*/
 
-	//StartKademlia()
+	StartKademlia()
 
 }
 
 func StartKademlia() {
 	nodeId := kdmlib.GenerateRandID(int64(rand.Intn(100)))
+	//connect to Google Cloud Node
 	rt := kdmlib.CreateAllWorkersForRoutingTable(kdmlib.K, kdmlib.IDLENGTH, 5, nodeId)
 	nw := kdmlib.InitializeNetwork(3, 12000, rt, false)
 	kdmlib.NewKademliaInstance(nw, nodeId, kdmlib.ALPHA, kdmlib.K, rt)
+
 }
