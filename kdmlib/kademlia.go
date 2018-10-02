@@ -32,16 +32,7 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 	return kademlia
 }
 
-func (kademlia *Kademlia) GetNextNode() *AddressTriple {
-	for index := range kademlia.closest {
-		if kademlia.asked[kademlia.closest[index]] != true {
-			kademlia.asked[kademlia.closest[index]] = true
-			return &kademlia.closest[index]
-		}
-	}
-	return nil
-}
-
+//TODO add timeout handling (bool channel input??)
 func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 	answerChannel := make(chan interface{}, kademlia.alpha)
 	kademlia.closest = []AddressTriple{}
@@ -51,7 +42,7 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 	}
 
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
-		fmt.Println("Sending find contact message")
+		fmt.Println("Sending find contact message to node")
 		kademlia.goroutines++
 		go kademlia.network.SendFindContact(ConvertToUDPAddr(kademlia.closest[i]), target.Id, answerChannel)
 
@@ -70,7 +61,7 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 				} else {
 					nextNode := kademlia.GetNextNode()
 					if nextNode != nil {
-						kademlia.goroutines++
+						fmt.Println("Sending find contact message to node")
 						go kademlia.network.SendFindContact(ConvertToUDPAddr(*nextNode), target.Id, answerChannel)
 					} else {
 						fmt.Println("Thread ended")
@@ -82,10 +73,19 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 			if kademlia.goroutines == 0 {
 				return kademlia.closest
 			}
+			if kademlia.goroutines < kademlia.k {
+				nextNode := kademlia.GetNextNode()
+				if nextNode != nil {
+					fmt.Println("Sending find contact message to node")
+					kademlia.goroutines++
+					go kademlia.network.SendFindContact(ConvertToUDPAddr(*nextNode), target.Id, answerChannel)
+				}
+			}
 		}
 	}
 }
 
+//TODO add timeout handling (bool channel input??)
 func (kademlia *Kademlia) LookupData(hash string) string {
 	answerChannel := make(chan interface{}, kademlia.alpha)
 	kademlia.closest = []AddressTriple{}
@@ -131,9 +131,30 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 			if kademlia.goroutines == 0 {
 				return ""
 			}
+			if kademlia.goroutines < kademlia.k {
+				nextNode := kademlia.GetNextNode()
+				if nextNode != nil {
+					fmt.Println("Sending find contact message to node")
+					kademlia.goroutines++
+					go kademlia.network.SendFindContact(ConvertToUDPAddr(*nextNode), hash, answerChannel)
+				}
+			}
 		}
 	}
+}
 
+func (kademlia *Kademlia) Store(data []byte) {
+	// TODO Use Jeremys Library
+}
+
+func (kademlia *Kademlia) GetNextNode() *AddressTriple {
+	for index := range kademlia.closest {
+		if kademlia.asked[kademlia.closest[index]] != true {
+			kademlia.asked[kademlia.closest[index]] = true
+			return &kademlia.closest[index]
+		}
+	}
+	return nil
 }
 
 func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target string) {
@@ -143,6 +164,7 @@ func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target str
 		for j := range newContacts {
 			if kademlia.closest[i].Id != newContacts[j].Id {
 				identicalList = false
+				//TODO add to RT?
 				kademlia.closest = append(kademlia.closest, newContacts[j])
 			}
 		}
@@ -160,7 +182,6 @@ func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target str
 }
 
 //Sorts the list of Closest contacts
-//TODO: test this method
 func (kademlia *Kademlia) SortContacts(target string) {
 	sortedList := []AddressTriple{}
 	for i := range kademlia.closest {
@@ -184,8 +205,4 @@ func (kademlia *Kademlia) SortContacts(target string) {
 		}
 	}
 	kademlia.closest = sortedList
-}
-
-func (kademlia *Kademlia) Store(data []byte) {
-	// TODO Use Jeremys Library
 }
