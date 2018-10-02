@@ -24,12 +24,13 @@ const (
 )
 
 type Network struct {
-	kademlia   *Kademlia
-	rt         RoutingTable
-	serverConn *net.UDPConn
-	mux        *sync.Mutex
-	queue      map[string]chan interface{} //<-change?
-	timeLimit  int
+	fileChannel chan fileUtilsKademlia.Order
+	kademlia    *Kademlia
+	rt          RoutingTable
+	serverConn  *net.UDPConn
+	mux         *sync.Mutex
+	queue       map[string]chan interface{} //<-change?
+	timeLimit   int
 }
 
 func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable, test bool) *Network {
@@ -53,7 +54,7 @@ func (network *Network) UDPConnection(Port int) { //TODO: learn how to properly 
 	CheckError(err)
 	network.serverConn = ServerConn
 	buf := make([]byte, 1024)
-	network.Listen(buf)
+	go network.Listen(buf)
 
 }
 
@@ -70,18 +71,19 @@ func (network *Network) Listen(buf []byte) {
 		fmt.Println(addr)
 		network.RequestHandler(container, addr)
 	}
-
 }
 
 func (network *Network) RequestHandler(container *pb.Container, addr *net.UDPAddr) {
 	switch container.REQUEST_ID {
 	case Ping:
 		fmt.Println("Received Ping_Request")
+		//time.Sleep(time.Second*6)
 		network.ReturnPing(addr, container.MSG_ID)
 		fmt.Println("Returned Ping_Request")
 		break
 	case FindContact:
 		fmt.Println("Received FindContact_Request")
+		//time.Sleep(time.Second*6)
 		network.ReturnContact(addr, container.MSG_ID, container.GetRequestContact().ID)
 		fmt.Println("Returned FindContact_Request")
 		break
@@ -109,7 +111,6 @@ func (network *Network) SendPing(addr *net.UDPAddr, returnChannel chan interface
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
-
 }
 
 func (network *Network) SendFindContact(addr *net.UDPAddr, contactID string, returnChannel chan interface{}) {
@@ -134,11 +135,6 @@ func (network *Network) SendFindData(addr *net.UDPAddr, hash string, returnChann
 
 func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte, returnChannel chan interface{}) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
-	/*	STORE message must contain in addition to the message ID
-		at least the data to be stored (including its length) and
-		the associated key. As the transport may be UDP, the message needs
-		to also contain at least the nodeID of the sender, and the reply the
-		nodeID of the recipient. */
 	Info := &pb.REQUEST_STORE{KEY: KEY, VALUE: DATA}
 	Data := &pb.Container_RequestStore{RequestStore: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, Attachment: Data}
@@ -183,21 +179,19 @@ func (network *Network) ReturnData(addr *net.UDPAddr, msgID string, DataID strin
 }
 
 func (network *Network) ReturnStore(addr *net.UDPAddr, msgID string, key string, value []byte) { //work in progress
-
-	if fileUtilsKademlia.ReadFileFromOS(key) != nil {
-		fmt.Println("Do something? Data exists?")
-	} else {
-		fmt.Println("Can passed data/value be big? or just 64kb udp package?" +
-			"Download file(UDP, TCP), TCP is better? more secure?, add to stored-files-list?") //<- a project in itself
-	}
-	//check if file already exist, if not, download and reply on the store request.
-	//--------------------------------------
 	/*
-		Info := &pb.RETURN_STORE{VALUE: "Stored"} //i stored the data msg!
-		Data := &pb.Container_ReturnStore{ReturnStore: Info}
-		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Store,MSG_ID:msgID Attachment: Data}
-		network.ReturnRequestedData(Container, addr)
+		The sender of the STORE RPC provides a key and a
+		block of data and requires that the recipient store
+		the data and make it available for later retrieval by that key.
+
 	*/
+	network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: key, Content: value}
+
+	Info := &pb.RETURN_STORE{VALUE: "Stored"}
+	Data := &pb.Container_ReturnStore{ReturnStore: Info}
+	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Store, MSG_ID: msgID, Attachment: Data}
+	network.ReturnRequestedData(Container, addr)
+
 }
 
 //Someone returns something you previously asked for!
@@ -222,8 +216,10 @@ func DataReturned(container *pb.Container, returnedRequest chan interface{}) {
 	Value := container.GetReturnData().VALUE
 	returnedRequest <- Value
 }
-
-func StoreReturned(container *pb.Container, returnedRequest chan interface{}) {}
+func StoreReturned(container *pb.Container, returnedRequest chan interface{}) {
+	Value := container.GetReturnStore().VALUE
+	returnedRequest <- Value
+}
 
 //helper functions
 func (network *Network) RequestData(container *pb.Container, addr *net.UDPAddr) {
@@ -232,6 +228,7 @@ func (network *Network) RequestData(container *pb.Container, addr *net.UDPAddr) 
 	CheckError(err)
 	conn.SetReadDeadline(time.Now().Add(time.Second * 3))
 	buf := []byte(EncodeContainer(container))
+
 	_, err = conn.Write(buf)
 	buf = make([]byte, 1024)
 	i, err := conn.Read(buf)
@@ -254,7 +251,6 @@ func (network *Network) ReturnHandler(container *pb.Container) {
 	switch container.REQUEST_ID {
 	case Ping:
 		fmt.Println("Ping Returned")
-		fmt.Println(container.GetReturnPing())
 		PingReturned(container, returnedRequest)
 		break
 	case FindContact:
