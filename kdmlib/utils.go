@@ -141,7 +141,7 @@ func ComputeDistance(id1 string, id2 string) (string, error) {
 }
 
 func ConvertToUDPAddr(contact AddressTriple) *net.UDPAddr {
-	addr, err := net.ResolveUDPAddr("udp", contact.Ip)
+	addr, err := net.ResolveUDPAddr("udp", contact.Ip+":"+contact.Port)
 
 	if err != nil {
 		log.Fatal("Error: ", err)

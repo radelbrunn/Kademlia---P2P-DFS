@@ -41,13 +41,6 @@ func TestRemove(t *testing.T) {
 	}
 }
 
-func TestComputeDistance(t *testing.T) {
-	res, _ := ComputeDistance("010", "111")
-	if res != "101" {
-		t.Error("not the right result")
-	}
-}
-
 func TestComputeDistanceNotSameLength(t *testing.T) {
 	_, res := ComputeDistance("0100", "111")
 	if res == nil {
