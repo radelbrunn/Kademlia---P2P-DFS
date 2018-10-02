@@ -141,10 +141,9 @@ func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target str
 	//newList := []AddressTriple{}
 	for i := range kademlia.closest {
 		for j := range newContacts {
-			if kademlia.closest[i].Id == newContacts[j].Id {
-
-			} else {
+			if kademlia.closest[i].Id != newContacts[j].Id {
 				identicalList = false
+				kademlia.closest = append(kademlia.closest, newContacts[j])
 			}
 		}
 	}
@@ -152,7 +151,38 @@ func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target str
 	if identicalList {
 		kademlia.identicalCalls++
 	} else {
+		kademlia.SortContacts(target)
 		kademlia.identicalCalls = 0
+	}
+
+	//return only K closest ones (remove the tail
+	kademlia.closest = kademlia.closest[:kademlia.k]
+}
+
+//Sorts the list of Closest contacts
+//TODO: test this method
+func (kademlia *Kademlia) SortContacts(target string) {
+	sortedList := []AddressTriple{}
+	for i := range kademlia.closest {
+		if len(sortedList) == 0 {
+			sortedList = append(sortedList, kademlia.closest[i])
+		} else {
+			inserted := false
+			for j := range sortedList {
+				distA, _ := ComputeDistance(kademlia.closest[i].Id, target)
+				distB, _ := ComputeDistance(sortedList[j].Id, target)
+				less, _ := DistanceLess(distA, distB)
+				if less {
+					inserted = true
+					sortedList = append(sortedList, AddressTriple{})
+					copy(sortedList[j+1:], sortedList[j:])
+					sortedList[j] = kademlia.closest[i]
+				}
+			}
+			if !inserted {
+				sortedList = append(sortedList, kademlia.closest[i])
+			}
+		}
 	}
 }
 

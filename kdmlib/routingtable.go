@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 )
@@ -70,7 +69,7 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 			counter++
 			if table[i].Len() > 0 && j.Value != nil {
 				triple := j.Value.(AddressTriple)
-				distance, err := computeDistance(triple.Id, id)
+				distance, err := ComputeDistance(triple.Id, id)
 				if err == nil && len(distance) > 0 {
 					nodes[l] = TripleAndDistance{triple, distance}
 					l++
@@ -220,7 +219,6 @@ func ping(address AddressTriple) error {
 	//simple write
 	conn.Write([]byte("ping"))
 
-
 	conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 	//simple Read
 	buffer := make([]byte, 1024)
@@ -269,22 +267,6 @@ func firstDifferentBit(address1 string, address2 string) (int, error) {
 		}
 	}
 	return len(address1) - 1, nil
-}
-
-func computeDistance(id1 string, id2 string) (string, error) {
-	if len(id1) != len(id2) {
-		return "", errors.New("lengths of the IDs are different")
-	} else {
-		var sb strings.Builder
-		for i := 0; i < len(id1); i++ {
-			if id1[i] == id2[i] {
-				sb.WriteString("0")
-			} else {
-				sb.WriteString("1")
-			}
-		}
-		return sb.String(), nil
-	}
 }
 
 type RoutingTable struct {

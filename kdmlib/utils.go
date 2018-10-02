@@ -124,7 +124,7 @@ func HashKademliaID(fileName string) string {
 	return f
 }
 
-func CalculateDistance(id1 string, id2 string) (string, error) {
+func ComputeDistance(id1 string, id2 string) (string, error) {
 	if len(id1) != len(id2) {
 		return "", errors.New("lengths of the IDs are different")
 	} else {
@@ -146,27 +146,6 @@ func DistanceLess(comp string, reference string) (bool, error) {
 		return false, errors.New("lengths of the IDs are different")
 	} else {
 		return comp <= reference, nil
-	}
-}
-
-//Inserts an element into array and sorts it
-//TODO: test this method
-func InsertAndSort(contactList []AddressTriple, item AddressTriple) []AddressTriple {
-	if len(contactList) == 0 {
-		contactList = append(contactList, item)
-		return contactList
-	} else {
-		for index := range contactList {
-			less, _ := DistanceLess(item.Id, contactList[index].Id)
-			if less {
-				contactList = append(contactList, AddressTriple{})
-				copy(contactList[index+1:], contactList[index:])
-				contactList[index] = item
-				return contactList
-			}
-		}
-		contactList = append(contactList, item)
-		return contactList
 	}
 }
 
