@@ -171,8 +171,7 @@ func (kademlia *Kademlia) SortContacts(target string) {
 			for j := range sortedList {
 				distA, _ := ComputeDistance(kademlia.closest[i].Id, target)
 				distB, _ := ComputeDistance(sortedList[j].Id, target)
-				less, _ := DistanceLess(distA, distB)
-				if less {
+				if distA <= distB && !inserted {
 					inserted = true
 					sortedList = append(sortedList, AddressTriple{})
 					copy(sortedList[j+1:], sortedList[j:])
@@ -184,6 +183,7 @@ func (kademlia *Kademlia) SortContacts(target string) {
 			}
 		}
 	}
+	kademlia.closest = sortedList
 }
 
 func (kademlia *Kademlia) Store(data []byte) {

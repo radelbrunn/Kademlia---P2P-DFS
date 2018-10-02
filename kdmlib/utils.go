@@ -140,15 +140,6 @@ func ComputeDistance(id1 string, id2 string) (string, error) {
 	}
 }
 
-//Returns true if distance (Comp) is less than (Reference)
-func DistanceLess(comp string, reference string) (bool, error) {
-	if len(comp) != len(reference) {
-		return false, errors.New("lengths of the IDs are different")
-	} else {
-		return comp <= reference, nil
-	}
-}
-
 func ConvertToUDPAddr(contact AddressTriple) *net.UDPAddr {
 	addr, err := net.ResolveUDPAddr("udp", contact.Ip)
 

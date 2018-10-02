@@ -16,6 +16,7 @@ func TestAddRoutingNotExist(t *testing.T) {
 		fmt.Println((*routingTable.routingtable.routingTable)[0].Len())
 	}
 }
+
 func TestAddRoutingIfExist(t *testing.T) {
 	routingTable := CreateAllWorkersForRoutingTable(1, 2, 1, "00")
 	routingTable.GiveOrder(OrderForRoutingTable{ADD, AddressTriple{"0", "0", "01"}, false})
@@ -66,6 +67,7 @@ func TestBump(t *testing.T) {
 
 	}
 }
+
 func TestRoutingTable_FindKClosest(t *testing.T) {
 	routingTable := CreateAllWorkersForRoutingTable(2, 2, 1, "00")
 	routingTable.GiveOrder(OrderForRoutingTable{ADD, AddressTriple{"0", "0", "10"}, false})
