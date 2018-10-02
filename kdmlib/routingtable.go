@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
 	"strings"
 	"sync"
 	"time"
@@ -179,7 +180,9 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 func sendToPinger(routingTable routingTableAndCache, index int, order OrderForRoutingTable, pingerChannel chan OrderForPinger, ordersToSend *list.List) {
 	var last *list.Element
 	for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
-		last = ele
+		if ele.Value!=nil{
+			last = ele
+		}
 	}
 	if len(pingerChannel) < cap(pingerChannel) {
 		pingerChannel <- OrderForPinger{last.Value.(AddressTriple), order.Target, true}
@@ -217,8 +220,13 @@ func ping(address AddressTriple) error {
 	}
 	defer conn.Close()
 
+	msgID := GenerateRandID()
+	Info := &pb.REQUEST_PING{ID: "asdasd"}
+	Data := &pb.Container_RequestPing{RequestPing: Info}
+	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
+
 	//simple write
-	conn.Write([]byte("ping"))
+	conn.Write([]byte(EncodeContainer(Container)))
 
 
 	conn.SetReadDeadline(time.Now().Add(time.Second * 2))

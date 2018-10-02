@@ -82,3 +82,15 @@ func TestRoutingTable_FindKClosest(t *testing.T) {
 		}
 	}
 }
+
+func TestRoutingTableOverLoad(t *testing.T) {
+	routingTable := CreateAllWorkersForRoutingTable(2,3,1,"000")
+	routingTable.GiveOrder(OrderForRoutingTable{ADD,AddressTriple{"0","0","100"},false})
+	routingTable.GiveOrder(OrderForRoutingTable{ADD,AddressTriple{"0","0","110"},false})
+	routingTable.GiveOrder(OrderForRoutingTable{ADD,AddressTriple{"0","0","111"},false})
+	time.Sleep(time.Second*3)
+
+	if (*routingTable.routingtable.routingTable)[0].Front().Value.(AddressTriple).Id != "111" {
+		t.Error("wrong triple in the list")
+	}
+}
