@@ -65,18 +65,19 @@ func (network *Network) Listen(buf []byte) {
 		fmt.Println(addr)
 		network.RequestHandler(container, addr)
 	}
-
 }
 func (network *Network) RequestHandler(container *pb.Container, addr *net.UDPAddr) {
 
 	switch container.REQUEST_ID {
 	case Ping:
 		fmt.Println("Received Ping_Request")
+		//time.Sleep(time.Second*6)
 		network.ReturnPing(addr, container.MSG_ID)
 		fmt.Println("Returned Ping_Request")
 		break
 	case FindContact:
 		fmt.Println("Received FindContact_Request")
+		//time.Sleep(time.Second*6)
 		network.ReturnContact(addr, container.MSG_ID, container.GetRequestContact().ID)
 		fmt.Println("Returned FindContact_Request")
 		break
@@ -239,7 +240,6 @@ func (network *Network) ReturnHandler(container *pb.Container) {
 	switch container.REQUEST_ID {
 	case Ping:
 		fmt.Println("Ping Returned")
-		fmt.Println(container.GetReturnPing())
 		PingReturned(container, returnedRequest)
 		break
 	case FindContact:
