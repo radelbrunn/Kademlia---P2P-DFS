@@ -8,7 +8,7 @@ import (
 type Kademlia struct {
 	closest            []AddressTriple
 	fileChannel        chan fileUtilsKademlia.Order
-	asked              map[AddressTriple]bool
+	asked              map[string]bool
 	nodeId             string
 	rt                 RoutingTable
 	network            Network
@@ -23,7 +23,7 @@ type Kademlia struct {
 func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt RoutingTable) *Kademlia {
 	kademlia := &Kademlia{}
 	kademlia.network = *nw
-	kademlia.asked = make(map[AddressTriple]bool)
+	kademlia.asked = make(map[string]bool)
 	kademlia.nodeId = nodeId
 	kademlia.rt = rt
 	kademlia.alpha = alpha
@@ -53,7 +53,7 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 		kademlia.goroutines++
 		go kademlia.network.SendFindContact(ConvertToUDPAddr(kademlia.closest[i]), target.Id, answerChannel)
 
-		kademlia.asked[kademlia.closest[i]] = true
+		kademlia.asked[kademlia.closest[i].Id] = true
 	}
 
 	//Channel listener
@@ -111,7 +111,7 @@ func (kademlia *Kademlia) LookupData(hash string) ([]AddressTriple, string) {
 		kademlia.goroutines++
 		go kademlia.network.SendFindData(ConvertToUDPAddr(kademlia.closest[i]), hash, answerChannel)
 
-		kademlia.asked[kademlia.closest[i]] = true
+		kademlia.asked[kademlia.closest[i].Id] = true
 	}
 
 	//Channel listener
@@ -164,8 +164,8 @@ func (kademlia *Kademlia) Store(data []byte, fileName string) {
 // Goes through the list of closest contacts and returns the next node to ask
 func (kademlia *Kademlia) GetNextNode() *AddressTriple {
 	for index := range kademlia.closest {
-		if kademlia.asked[kademlia.closest[index]] != true {
-			kademlia.asked[kademlia.closest[index]] = true
+		if kademlia.asked[kademlia.closest[index].Id] != true {
+			kademlia.asked[kademlia.closest[index].Id] = true
 			return &kademlia.closest[index]
 		}
 	}
@@ -197,8 +197,8 @@ func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target str
 		kademlia.identicalCalls = 0
 	}
 
-	//return only K closest ones (remove the tail
-	kademlia.closest = kademlia.closest[:kademlia.k]
+	//return only K closest ones (remove the tail)
+	//kademlia.closest = kademlia.closest[:kademlia.k]
 }
 
 //Sorts the list of closest contacts, according to distance to target
