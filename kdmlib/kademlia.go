@@ -1,11 +1,13 @@
 package kdmlib
 
 import (
+	"Kademlia---P2P-DFS/kdmlib/fileutils"
 	"fmt"
 )
 
 type Kademlia struct {
 	closest            []AddressTriple
+	fileChannel        chan fileUtilsKademlia.Order
 	asked              map[AddressTriple]bool
 	nodeId             string
 	rt                 RoutingTable
@@ -27,7 +29,7 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 	kademlia.k = k
 	kademlia.goroutines = 0
 	kademlia.identicalCalls = 0
-	kademlia.identicalThreshold = alpha
+	kademlia.identicalThreshold = 2
 
 	return kademlia
 }
@@ -143,8 +145,8 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 	}
 }
 
-func (kademlia *Kademlia) Store(data []byte) {
-	// TODO Use Jeremys Library
+func (kademlia *Kademlia) Store(data []byte, fileName string) {
+	kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 }
 
 func (kademlia *Kademlia) GetNextNode() *AddressTriple {
@@ -158,19 +160,21 @@ func (kademlia *Kademlia) GetNextNode() *AddressTriple {
 }
 
 func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target string) {
-	identicalList := true
-	//newList := []AddressTriple{}
-	for i := range kademlia.closest {
-		for j := range newContacts {
-			if kademlia.closest[i].Id != newContacts[j].Id {
-				identicalList = false
-				//TODO add to RT?
-				kademlia.closest = append(kademlia.closest, newContacts[j])
+	elementsAlreadyPresent := true
+	for i := range newContacts {
+		elementExists := false
+		for j := range kademlia.closest {
+			if kademlia.closest[j].Id == newContacts[i].Id {
+				elementExists = true
 			}
+		}
+		if !elementExists {
+			elementsAlreadyPresent = false
+			kademlia.closest = append(kademlia.closest, newContacts[i])
 		}
 	}
 
-	if identicalList {
+	if elementsAlreadyPresent {
 		kademlia.identicalCalls++
 	} else {
 		kademlia.SortContacts(target)

@@ -30,3 +30,10 @@ func TestSortingContacts(t *testing.T) {
 		t.Error("Sorting is all wrong")
 	}
 }
+
+/**
+func TestUpdateContactsEqual(t *testing.T) {
+
+}
+
+**/
