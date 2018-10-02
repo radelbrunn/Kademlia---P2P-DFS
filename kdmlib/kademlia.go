@@ -19,6 +19,7 @@ type Kademlia struct {
 	identicalThreshold int
 }
 
+// Initializes a Kademlia struct
 func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt RoutingTable) *Kademlia {
 	kademlia := &Kademlia{}
 	kademlia.network = *nw
@@ -35,6 +36,9 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 }
 
 //TODO add timeout handling (bool channel input??)
+// Returns up to K closest contacts to the target contact.
+// Creates a channel and executes the calls to different nodes in separate goroutines
+// Stops if same answer is received multiple times or if all contacts in kademlia.closest have been asked.
 func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 	answerChannel := make(chan interface{}, kademlia.alpha)
 	kademlia.closest = []AddressTriple{}
@@ -43,6 +47,7 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 		kademlia.closest = append(kademlia.closest, e.Triple)
 	}
 
+	//Loop through the closest contacts from the routing table
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
 		fmt.Println("Sending find contact message to node")
 		kademlia.goroutines++
@@ -51,6 +56,7 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 		kademlia.asked[kademlia.closest[i]] = true
 	}
 
+	//Channel listener
 	for {
 		select {
 		case answer := <-answerChannel:
@@ -88,7 +94,10 @@ func (kademlia *Kademlia) LookupContact(target *AddressTriple) []AddressTriple {
 }
 
 //TODO add timeout handling (bool channel input??)
-func (kademlia *Kademlia) LookupData(hash string) string {
+// Returns the file, according to the hashed filename, or a list of closest contacts, if a file is not found.
+// Creates a channel and executes the calls to different nodes in separate goroutines
+// Stops if same answer is received multiple times (contacts), if all contacts in kademlia.closest have been asked or if the data is located.
+func (kademlia *Kademlia) LookupData(hash string) ([]AddressTriple, string) {
 	answerChannel := make(chan interface{}, kademlia.alpha)
 	kademlia.closest = []AddressTriple{}
 
@@ -96,6 +105,7 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 		kademlia.closest = append(kademlia.closest, e.Triple)
 	}
 
+	//Loop through the closest contacts from the routing table
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
 		fmt.Println("Sending find data message")
 		kademlia.goroutines++
@@ -104,19 +114,20 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 		kademlia.asked[kademlia.closest[i]] = true
 	}
 
+	//Channel listener
 	for {
 		select {
 		case answer := <-answerChannel:
 			switch answer := answer.(type) {
 			case string:
-				return answer
+				return []AddressTriple{}, answer
 
 			case []AddressTriple:
 
 				kademlia.RefreshClosest(answer, hash)
 				if kademlia.identicalCalls > kademlia.identicalThreshold {
 					fmt.Println("File not found (multiple consecutive same answers)")
-					return ""
+					return kademlia.closest, ""
 				} else {
 					nextNode := kademlia.GetNextNode()
 					if nextNode != nil {
@@ -131,7 +142,7 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 
 		default:
 			if kademlia.goroutines == 0 {
-				return ""
+				return kademlia.closest, ""
 			}
 			if kademlia.goroutines < kademlia.k {
 				nextNode := kademlia.GetNextNode()
@@ -145,10 +156,12 @@ func (kademlia *Kademlia) LookupData(hash string) string {
 	}
 }
 
+// Stores a file locally
 func (kademlia *Kademlia) Store(data []byte, fileName string) {
 	kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 }
 
+// Goes through the list of closest contacts and returns the next node to ask
 func (kademlia *Kademlia) GetNextNode() *AddressTriple {
 	for index := range kademlia.closest {
 		if kademlia.asked[kademlia.closest[index]] != true {
@@ -159,6 +172,9 @@ func (kademlia *Kademlia) GetNextNode() *AddressTriple {
 	return nil
 }
 
+// Refreshes the list of closest contacts
+// All nodes that doesn't already exist in kademlia.closest will be appended and the sorted
+// If no new AddressTriple is added to kademlia.closest, the kademlia.identicalCalls is incremented
 func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target string) {
 	elementsAlreadyPresent := true
 	for i := range newContacts {
@@ -185,7 +201,7 @@ func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target str
 	kademlia.closest = kademlia.closest[:kademlia.k]
 }
 
-//Sorts the list of Closest contacts
+//Sorts the list of closest contacts, according to distance to target
 func (kademlia *Kademlia) SortContacts(target string) {
 	sortedList := []AddressTriple{}
 	for i := range kademlia.closest {
