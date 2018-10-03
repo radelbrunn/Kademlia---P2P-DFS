@@ -91,7 +91,7 @@ func TestNetwork_SendFindData(t *testing.T) {
 
 		if container.REQUEST_TYPE != Request || container.REQUEST_ID != FindData ||
 			container.GetRequestData().KEY != hash {
-			t.Error("Didn't receive a FindContact request! Hmmm....")
+			t.Error("Didn't receive a send data request! Hmmm....")
 			t.Fail()
 		}
 		return
@@ -121,7 +121,7 @@ func TestNetwork_SendStoreData(t *testing.T) {
 
 		if container.REQUEST_TYPE != Request || container.REQUEST_ID != Store ||
 			container.GetRequestStore().KEY != key || !(bytes.Equal(container.GetRequestStore().VALUE, data)) {
-			t.Error("Didn't receive a FindContact request! Hmmm....")
+			t.Error("Didn't receive a store request! Hmmm....")
 			t.Fail()
 		}
 		return
@@ -129,10 +129,10 @@ func TestNetwork_SendStoreData(t *testing.T) {
 }
 
 func TestNetwork_ReturnPing(t *testing.T) {
-	msgID := "123"
+	msgID := GenerateRandID(int64(rand.Intn(100)))
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	//addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000")
+
 	network := InitializeNetwork(5, 12000, rt, false)
 	answerChannel := make(chan interface{})
 	network.putInQueue(msgID, answerChannel)
@@ -159,7 +159,7 @@ func TestNetwork_ReturnPing(t *testing.T) {
 }
 func TestNetwork_ReturnContact(t *testing.T) {
 	contactID := "00001"
-	msgID := "123"
+	msgID := GenerateRandID(int64(rand.Intn(100)))
 
 	rt := CreateAllWorkersForRoutingTable(20, 5, 5, "00000")
 	//routingT := CreateAllWorkersForRoutingTable(20,160,5,GenerateRandID())
@@ -204,7 +204,7 @@ func TestNetwork_ReturnContact(t *testing.T) {
 		break
 	default:
 		if !(reflect.DeepEqual(answer, listOfContacts)) {
-			t.Error("I did not return the right id")
+			t.Error("I did not return the right list")
 			t.Fail()
 		}
 		break
@@ -212,10 +212,10 @@ func TestNetwork_ReturnContact(t *testing.T) {
 
 }
 func TestNetwork_ReturnData(t *testing.T) {
-	msgID := "123"
+	msgID := GenerateRandID(int64(rand.Intn(100)))
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	//addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000")
+
 	network := InitializeNetwork(5, 23423, rt, false)
 	answerChannel := make(chan interface{})
 	network.putInQueue(msgID, answerChannel)
@@ -235,7 +235,7 @@ func TestNetwork_ReturnData(t *testing.T) {
 		break
 	default:
 		if !(reflect.DeepEqual(answer, Value)) {
-			t.Error("I did not return the right id")
+			t.Error("I did not return the right data")
 			t.Fail()
 		}
 		break
@@ -243,7 +243,7 @@ func TestNetwork_ReturnData(t *testing.T) {
 
 }
 func TestNetwork_ReturnStore(t *testing.T) {
-	msgID := "123"
+	msgID := GenerateRandID(int64(rand.Intn(100)))
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 
@@ -265,7 +265,7 @@ func TestNetwork_ReturnStore(t *testing.T) {
 		break
 	default:
 		if answer != Value {
-			t.Error("I did not return the right id")
+			t.Error("I did not return the right value")
 			t.Fail()
 		}
 		break
@@ -274,14 +274,139 @@ func TestNetwork_ReturnStore(t *testing.T) {
 }
 
 func TestPingReturned(t *testing.T) {
+	myID := "qwerty"
+	msgID := GenerateRandID(int64(rand.Intn(100)))
+	nodeId := GenerateRandID(int64(rand.Intn(100)))
 
+	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
+	network := InitializeNetwork(5, 12312, rt, false)
+
+	Info := &pb.REQUEST_PING{ID: myID}
+	Data := &pb.Container_RequestPing{RequestPing: Info}
+	container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
+
+	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12312")
+	conn, _ := net.ListenUDP("udp", addr)
+	defer conn.Close()
+	buf := make([]byte, 4096)
+
+	go network.RequestHandler(container, addr)
+
+	for {
+		n, _, _ := conn.ReadFromUDP(buf)
+		container := &pb.Container{}
+		proto.Unmarshal(buf[0:n], container)
+
+		if container.REQUEST_TYPE != Return || container.REQUEST_ID != Ping {
+			t.Error("Didn't receive a ping return! Hmmm....")
+			t.Fail()
+		}
+		return
+	}
 }
 func TestContactReturned(t *testing.T) {
+	contactID := "00000"
+	msgID := GenerateRandID(int64(rand.Intn(100)))
+	nodeId := GenerateRandID(int64(rand.Intn(100)))
 
+	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
+	network := InitializeNetwork(5, 31212, rt, false)
+
+	Info := &pb.REQUEST_CONTACT{ID: contactID}
+	Data := &pb.Container_RequestContact{RequestContact: Info}
+	container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, Attachment: Data}
+
+	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:31212")
+	conn, _ := net.ListenUDP("udp", addr)
+	defer conn.Close()
+	buf := make([]byte, 4096)
+
+	go network.RequestHandler(container, addr)
+
+	for {
+		n, _, _ := conn.ReadFromUDP(buf)
+		container := &pb.Container{}
+		proto.Unmarshal(buf[0:n], container)
+
+		if container.REQUEST_TYPE != Return || container.REQUEST_ID != FindContact {
+			t.Error("Didn't receive a contact return! Hmmm....")
+			t.Fail()
+		}
+		return
+	}
 }
+
+/*  NEED to check for a real file in order to pass!!!!!!!
+	Maybe two unit tests for this? one for file exist and one for return contacts!
+
+
 func TestDataReturned(t *testing.T) {
+	hash := GenerateRandID(int64(rand.Intn(100)))
+	msgID := GenerateRandID(int64(rand.Intn(100)))
+	nodeId := GenerateRandID(int64(rand.Intn(100)))
+
+	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
+	network := InitializeNetwork(5, 31213, rt, false)
+
+	Info := &pb.REQUEST_DATA{KEY: hash}   // <--- look in  a particular folder for a file with this "name"
+	Data := &pb.Container_RequestData{RequestData: Info}
+	container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, Attachment: Data}
+
+	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:31213")
+	conn, _ := net.ListenUDP("udp", addr)
+	defer conn.Close()
+	buf := make([]byte, 4096)
+
+	go network.RequestHandler(container, addr)
+
+	for {
+		n, _, _ := conn.ReadFromUDP(buf)
+		container := &pb.Container{}
+		proto.Unmarshal(buf[0:n], container)
+
+		if container.REQUEST_TYPE != Return || container.REQUEST_ID != FindData {
+			t.Error("Didn't receive a data return! Hmmm....")
+			t.Fail()
+		}
+		return
+	}
 
 }
+ Same story here. Need to check for file on os.
+
+
 func TestStoreReturned(t *testing.T) {
+	KEY := GenerateRandID(int64(rand.Intn(100)))
+	DATA := []byte("hello")
+	msgID := GenerateRandID(int64(rand.Intn(100)))
+	nodeId := GenerateRandID(int64(rand.Intn(100)))
+
+	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
+	network := InitializeNetwork(5, 32213, rt, false)
+
+
+	Info := &pb.REQUEST_STORE{KEY: KEY, VALUE: DATA}
+	Data := &pb.Container_RequestStore{RequestStore: Info}
+	container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, Attachment: Data}
+
+	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:32213")
+	conn, _ := net.ListenUDP("udp", addr)
+	defer conn.Close()
+	buf := make([]byte, 4096)
+
+	go network.RequestHandler(container, addr)
+
+	for {
+		n, _, _ := conn.ReadFromUDP(buf)
+		container := &pb.Container{}
+		proto.Unmarshal(buf[0:n], container)
+
+		if container.REQUEST_TYPE != Return || container.REQUEST_ID != Store {
+			t.Error("Didn't receive a store return! Hmmm....")
+			t.Fail()
+		}
+		return
+	}
 
 }
+*/
