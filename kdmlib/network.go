@@ -24,12 +24,13 @@ const (
 )
 
 type Network struct {
-	kademlia   *Kademlia
-	rt         RoutingTable
-	serverConn *net.UDPConn
-	mux        *sync.Mutex
-	queue      map[string]chan interface{} //<-change?
-	timeLimit  int
+	fileChannel chan fileUtilsKademlia.Order
+	kademlia    *Kademlia
+	rt          RoutingTable
+	serverConn  *net.UDPConn
+	mux         *sync.Mutex
+	queue       map[string]chan interface{} //<-change?
+	timeLimit   int
 }
 
 func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable, test bool) *Network {
@@ -44,7 +45,6 @@ func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable, test bool) *
 	}
 	return network
 }
-
 func (network *Network) UDPConnection(Port int) { //TODO: learn how to properly use channels
 	ServerAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(Port))
 	CheckError(err)
@@ -53,10 +53,9 @@ func (network *Network) UDPConnection(Port int) { //TODO: learn how to properly 
 	CheckError(err)
 	network.serverConn = ServerConn
 	buf := make([]byte, 1024)
-	network.Listen(buf)
+	go network.Listen(buf)
 
 }
-
 func (network *Network) Listen(buf []byte) {
 	defer network.serverConn.Close()
 	for {
@@ -70,9 +69,7 @@ func (network *Network) Listen(buf []byte) {
 		fmt.Println(addr)
 		network.RequestHandler(container, addr)
 	}
-
 }
-
 func (network *Network) RequestHandler(container *pb.Container, addr *net.UDPAddr) {
 	switch container.REQUEST_ID {
 	case Ping:
@@ -87,12 +84,12 @@ func (network *Network) RequestHandler(container *pb.Container, addr *net.UDPAdd
 		break
 	case FindData:
 		fmt.Println("Received FindData_Request")
-		//network.ReturnData(addr, container.MSG_ID, container.GetRequestData().KEY)
+		network.ReturnData(addr, container.MSG_ID, container.GetRequestData().KEY) //need to pass a co
 		fmt.Println("Returned FindData_Request")
 		break
 	case Store:
 		fmt.Println("Received Store_Request")
-		//network.ReturnStore(addr, container.MSG_ID, container.GetRequestStore().KEY, container.GetRequestStore().VALUE)
+		network.ReturnStore(addr, container.MSG_ID, container.GetRequestStore().KEY, container.GetRequestStore().VALUE)
 		fmt.Println("Returned Store_Request")
 		break
 	default:
@@ -102,43 +99,32 @@ func (network *Network) RequestHandler(container *pb.Container, addr *net.UDPAdd
 
 //You ask something from someone!
 func (network *Network) SendPing(addr *net.UDPAddr, returnChannel chan interface{}) {
-	//myID := network.kademlia.nodeId
+	myID := "qwerty"
 	msgID := GenerateRandID(int64(rand.Intn(100)))
-	Info := &pb.REQUEST_PING{ID: "asdasd"}
+	Info := &pb.REQUEST_PING{ID: myID}
 	Data := &pb.Container_RequestPing{RequestPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
-
 }
-
 func (network *Network) SendFindContact(addr *net.UDPAddr, contactID string, returnChannel chan interface{}) {
-	//msgID := GenerateRandID()
-	msgID := "12345"
+	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_CONTACT{ID: contactID}
 	Data := &pb.Container_RequestContact{RequestContact: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
 }
-
 func (network *Network) SendFindData(addr *net.UDPAddr, hash string, returnChannel chan interface{}) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
-	fmt.Println(msgID)
 	Info := &pb.REQUEST_DATA{KEY: hash}
 	Data := &pb.Container_RequestData{RequestData: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
 }
-
 func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte, returnChannel chan interface{}) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
-	/*	STORE message must contain in addition to the message ID
-		at least the data to be stored (including its length) and
-		the associated key. As the transport may be UDP, the message needs
-		to also contain at least the nodeID of the sender, and the reply the
-		nodeID of the recipient. */
 	Info := &pb.REQUEST_STORE{KEY: KEY, VALUE: DATA}
 	Data := &pb.Container_RequestStore{RequestStore: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, Attachment: Data}
@@ -148,13 +134,12 @@ func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte
 
 //Someone ask something from you and you return!
 func (network *Network) ReturnPing(addr *net.UDPAddr, msgID string) {
-	//myID := network.kademlia.nodeId
-	Info := &pb.RETURN_PING{ID: "qwe"}
+	myID := "qwerty"
+	Info := &pb.RETURN_PING{ID: myID}
 	Data := &pb.Container_ReturnPing{ReturnPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
 	network.ReturnRequestedData(Container, addr)
 }
-
 func (network *Network) ReturnContact(addr *net.UDPAddr, msgID string, contactID string) {
 	closestContacts := network.rt.FindKClosest(contactID) //mux on this?
 	contactListReply := []*pb.RETURN_CONTACTS_CONTACT_INFO{}
@@ -168,8 +153,7 @@ func (network *Network) ReturnContact(addr *net.UDPAddr, msgID string, contactID
 	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindContact, MSG_ID: msgID, Attachment: Data}
 	network.ReturnRequestedData(Container, addr)
 }
-
-func (network *Network) ReturnData(addr *net.UDPAddr, msgID string, DataID string, contactID string) {
+func (network *Network) ReturnData(addr *net.UDPAddr, msgID string, DataID string) {
 
 	if fileUtilsKademlia.ReadFileFromOS(DataID) != nil {
 		Value := fileUtilsKademlia.ReadFileFromOS(DataID)
@@ -178,26 +162,18 @@ func (network *Network) ReturnData(addr *net.UDPAddr, msgID string, DataID strin
 		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: msgID, Attachment: Data}
 		network.ReturnRequestedData(Container, addr)
 	} else {
-		network.ReturnContact(addr, msgID, contactID)
+		network.ReturnContact(addr, msgID, network.kademlia.nodeId) //this should return my closest contacts? nodeID is my id?
 	}
 }
-
 func (network *Network) ReturnStore(addr *net.UDPAddr, msgID string, key string, value []byte) { //work in progress
 
-	if fileUtilsKademlia.ReadFileFromOS(key) != nil {
-		fmt.Println("Do something? Data exists?")
-	} else {
-		fmt.Println("Can passed data/value be big? or just 64kb udp package?" +
-			"Download file(UDP, TCP), TCP is better? more secure?, add to stored-files-list?") //<- a project in itself
-	}
-	//check if file already exist, if not, download and reply on the store request.
-	//--------------------------------------
-	/*
-		Info := &pb.RETURN_STORE{VALUE: "Stored"} //i stored the data msg!
-		Data := &pb.Container_ReturnStore{ReturnStore: Info}
-		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Store,MSG_ID:msgID Attachment: Data}
-		network.ReturnRequestedData(Container, addr)
-	*/
+	network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: key, Content: value}
+
+	Info := &pb.RETURN_STORE{VALUE: "Stored"}
+	Data := &pb.Container_ReturnStore{ReturnStore: Info}
+	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Store, MSG_ID: msgID, Attachment: Data}
+	network.ReturnRequestedData(Container, addr)
+
 }
 
 //Someone returns something you previously asked for!
@@ -205,7 +181,6 @@ func PingReturned(container *pb.Container, returnedRequest chan interface{}) {
 	contactID := container.GetReturnPing().ID
 	returnedRequest <- contactID
 }
-
 func ContactReturned(container *pb.Container, returnedRequest chan interface{}) {
 	listOfContacts := []AddressTriple{}
 	for i := range container.GetReturnContacts().ContactInfo {
@@ -217,13 +192,14 @@ func ContactReturned(container *pb.Container, returnedRequest chan interface{}) 
 
 	returnedRequest <- listOfContacts
 }
-
 func DataReturned(container *pb.Container, returnedRequest chan interface{}) {
 	Value := container.GetReturnData().VALUE
 	returnedRequest <- Value
 }
-
-func StoreReturned(container *pb.Container, returnedRequest chan interface{}) {}
+func StoreReturned(container *pb.Container, returnedRequest chan interface{}) {
+	Value := container.GetReturnStore().VALUE
+	returnedRequest <- Value
+}
 
 //helper functions
 func (network *Network) RequestData(container *pb.Container, addr *net.UDPAddr) {
@@ -232,6 +208,7 @@ func (network *Network) RequestData(container *pb.Container, addr *net.UDPAddr) 
 	CheckError(err)
 	conn.SetReadDeadline(time.Now().Add(time.Second * 3))
 	buf := []byte(EncodeContainer(container))
+
 	_, err = conn.Write(buf)
 	buf = make([]byte, 1024)
 	i, err := conn.Read(buf)
@@ -244,7 +221,6 @@ func (network *Network) RequestData(container *pb.Container, addr *net.UDPAddr) 
 	network.ReturnHandler(container)
 
 }
-
 func (network *Network) ReturnHandler(container *pb.Container) {
 	returnedRequest := network.takeFromQueue(container.MSG_ID)
 	if returnedRequest == nil {
@@ -254,7 +230,6 @@ func (network *Network) ReturnHandler(container *pb.Container) {
 	switch container.REQUEST_ID {
 	case Ping:
 		fmt.Println("Ping Returned")
-		fmt.Println(container.GetReturnPing())
 		PingReturned(container, returnedRequest)
 		break
 	case FindContact:
@@ -273,7 +248,6 @@ func (network *Network) ReturnHandler(container *pb.Container) {
 		fmt.Println("Something went horribly wrong! (Return)")
 	}
 }
-
 func (network *Network) ReturnRequestedData(container *pb.Container, addr *net.UDPAddr) {
 
 	buf := []byte(EncodeContainer(container))
@@ -283,20 +257,17 @@ func (network *Network) ReturnRequestedData(container *pb.Container, addr *net.U
 		fmt.Println(EncodeContainer(container), err)
 	}
 }
-
 func (network *Network) putInQueue(msgID string, returnChannel chan interface{}) {
 	network.mux.Lock()
 	network.queue[msgID] = returnChannel
 	network.mux.Unlock()
 }
-
 func (network *Network) takeFromQueue(msgID string) (returnedRequest chan interface{}) {
 	network.mux.Lock()
 	returnedRequest = network.queue[msgID]
 	network.mux.Unlock()
 	return returnedRequest
 }
-
 func EncodeContainer(pack *pb.Container) []byte {
 	data, err := proto.Marshal(pack)
 	if err != nil {
@@ -304,7 +275,6 @@ func EncodeContainer(pack *pb.Container) []byte {
 	}
 	return data
 }
-
 func CheckError(err error) {
 	if err != nil {
 		fmt.Println("Error: ", err)
