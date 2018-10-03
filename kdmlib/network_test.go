@@ -12,6 +12,7 @@ import (
 )
 
 func TestNetwork_SendPing(t *testing.T) {
+	myID := "qwerty"
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 	network := InitializeNetwork(3, 12345, rt, true)
@@ -32,7 +33,7 @@ func TestNetwork_SendPing(t *testing.T) {
 		proto.Unmarshal(buf[0:n], container)
 
 		if container.REQUEST_TYPE != Request || container.REQUEST_ID != Ping ||
-			container.GetRequestPing().ID != "asdasd" {
+			container.GetRequestPing().ID != myID {
 			t.Error("Didn't receive a ping request! Hmmm....")
 			t.Fail()
 		}
