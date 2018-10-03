@@ -71,7 +71,7 @@ func TestKademlia_RefreshClosest(t *testing.T) {
 	}
 }
 
-func TestKademlia_GetNextNode(t *testing.T) {
+func TestKademlia_GetNextContact(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 	nw := InitializeNetwork(3, 12000, rt, true)
@@ -83,20 +83,20 @@ func TestKademlia_GetNextNode(t *testing.T) {
 	testKademlia.closest = append(testKademlia.closest, t1)
 	testKademlia.asked[testKademlia.closest[0].Id] = true
 
-	nextNode := testKademlia.GetNextNode()
+	nextNode := testKademlia.GetNextContact()
 	if nextNode != nil {
 		t.Error("Expected nil, got ", nextNode)
 	}
 
 	testKademlia.closest = append(testKademlia.closest, t2)
 
-	nextNode = testKademlia.GetNextNode()
+	nextNode = testKademlia.GetNextContact()
 	if nextNode.Id != t2.Id {
 		t.Error("Expected", t2, " got ", nextNode)
 	}
 
 	testKademlia.asked[testKademlia.closest[1].Id] = true
-	nextNode = testKademlia.GetNextNode()
+	nextNode = testKademlia.GetNextContact()
 	if nextNode != nil {
 		t.Error("Expected nil, got ", nextNode)
 	}
