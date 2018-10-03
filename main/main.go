@@ -27,6 +27,7 @@ func main() {
 
 	nw := kdmlib.InitializeNetwork(5, 12000, routingT, false)
 	nw2 := kdmlib.InitializeNetwork(5, 9000, routingT, false)
+	fmt.Println("Sending a ping request")
 	nw2.SendPing(addr, answerChannel)
 	fmt.Println(nw)
 
