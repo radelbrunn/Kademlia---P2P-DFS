@@ -33,7 +33,6 @@ func (dependencies RestDependencies) getFile(w http.ResponseWriter, r *http.Requ
 		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 		value := filesUtils.ReadFileFromOS(mux.Vars(r)["name"])
 		w.Header().Set("Content-Length", strconv.Itoa(len(value)))
-
 		w.Write(value)
 	} else {
 		//TODO try to get the file from another node , send back 404 if not found, 200 and file if found
@@ -43,7 +42,7 @@ func (dependencies RestDependencies) getFile(w http.ResponseWriter, r *http.Requ
 
 func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.Request) {
 	//TODO read file into a buffer, send order to channel, and launch the right function to send the file
-	// to the other nodes and compute 160 bits hash
+	// to the other nodes and compute 160 bits hash. Has to send back the name to the sender.
 
 }
 
