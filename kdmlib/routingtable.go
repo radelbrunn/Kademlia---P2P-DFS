@@ -7,9 +7,9 @@ import (
 	"net"
 	"sort"
 	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
-	"strings"
 	"sync"
 	"time"
+	"math/rand"
 )
 
 const (
@@ -71,7 +71,7 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 			counter++
 			if table[i].Len() > 0 && j.Value != nil {
 				triple := j.Value.(AddressTriple)
-				distance, err := computeDistance(triple.Id, id)
+				distance, err := ComputeDistance(triple.Id, id)
 				if err == nil && len(distance) > 0 {
 					nodes[l] = TripleAndDistance{triple, distance}
 					l++
@@ -220,14 +220,13 @@ func ping(address AddressTriple) error {
 	}
 	defer conn.Close()
 
-	msgID := GenerateRandID()
+	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_PING{ID: "asdasd"}
 	Data := &pb.Container_RequestPing{RequestPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
 
 	//simple write
 	conn.Write([]byte(EncodeContainer(Container)))
-
 
 	conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 	//simple Read
@@ -277,22 +276,6 @@ func firstDifferentBit(address1 string, address2 string) (int, error) {
 		}
 	}
 	return len(address1) - 1, nil
-}
-
-func computeDistance(id1 string, id2 string) (string, error) {
-	if len(id1) != len(id2) {
-		return "", errors.New("lengths of the IDs are different")
-	} else {
-		var sb strings.Builder
-		for i := 0; i < len(id1); i++ {
-			if id1[i] == id2[i] {
-				sb.WriteString("0")
-			} else {
-				sb.WriteString("1")
-			}
-		}
-		return sb.String(), nil
-	}
 }
 
 type RoutingTable struct {

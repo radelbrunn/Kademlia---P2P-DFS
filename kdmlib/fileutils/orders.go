@@ -1,13 +1,12 @@
 package fileUtilsKademlia
+
 const (
-	ADD  = 0
-	REMOVE  = 1
+	ADD    = 0
+	REMOVE = 1
 )
 
 type Order struct {
-	action int
-	name   string
-	content []byte
+	Action  int
+	Name    string
+	Content []byte
 }
-
-
