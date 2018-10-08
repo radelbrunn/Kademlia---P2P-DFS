@@ -32,14 +32,16 @@ type Network struct {
 	mux         *sync.Mutex
 	queue       map[string]chan interface{} //<-change?
 	timeLimit   int
+	nodeID      string
 }
 
-func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable, test bool) *Network {
+func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable, nodeID string, test bool) *Network {
 	network := &Network{}
 	network.rt = rt
 	network.mux = &sync.Mutex{}
 	network.queue = make(map[string]chan interface{})
 	network.timeLimit = timeOutLimit
+	network.nodeID = nodeID
 
 	if !test {
 		network.UDPConnection(port)
@@ -63,10 +65,10 @@ func (network *Network) Listen(buf []byte) { //pass ----> tasks []*workerPool.Ta
 	tasks := []*Task{}
 	p := NewPool(tasks, runtime.NumCPU())
 	for {
-		if len(tasks) >= 200 { //test
-			go p.Run(network)
-			tasks = []*Task{}
-		}
+		//if len(tasks) >= 2 { //test
+		go p.Run(network)
+		//	tasks = []*Task{}
+		//	}
 
 		n, addr, err := network.serverConn.ReadFromUDP(buf)
 
@@ -75,7 +77,7 @@ func (network *Network) Listen(buf []byte) { //pass ----> tasks []*workerPool.Ta
 		if err != nil {
 			fmt.Println("Error: ", err)
 		}
-
+		tasks = []*Task{}
 		task := NewTask(func() error { return nil }, container, addr) //pass args such as container, addr
 		tasks = append(tasks, task)
 		p = NewPool(tasks, runtime.NumCPU())
@@ -100,11 +102,14 @@ func (network *Network) RequestHandler(container *pb.Container, addr *net.UDPAdd
 	default:
 		fmt.Println("Something went horribly wrong! (Request)")
 	}
+	//todo: update routingtable
+	//network.rt.GiveOrder(OrderForRoutingTable{ADD, AddressTriple{"127.0.0.1", "9000", container.ID}, false})
+
 }
 
 //You ask something from someone!
 func (network *Network) SendPing(addr *net.UDPAddr, returnChannel chan interface{}) {
-	myID := "qwerty"
+	myID := network.nodeID
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_PING{ID: myID}
 	Data := &pb.Container_RequestPing{RequestPing: Info}
@@ -139,8 +144,7 @@ func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte
 
 //Someone ask something from you and you return!
 func (network *Network) ReturnPing(addr *net.UDPAddr, msgID string) {
-	//update routing table
-	myID := "qwerty"
+	myID := network.nodeID
 	Info := &pb.RETURN_PING{ID: myID}
 	Data := &pb.Container_ReturnPing{ReturnPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
