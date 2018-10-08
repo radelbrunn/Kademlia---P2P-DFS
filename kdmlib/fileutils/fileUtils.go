@@ -16,7 +16,7 @@ type pinnedFilesStruct struct {
 	lock        *sync.Mutex
 }
 
-type fileMap struct {
+type FileMap struct {
 	mapPresent map[string]bool
 	lock       *sync.Mutex
 }
@@ -39,27 +39,27 @@ func createFilesDirectory() {
 }
 
 //add or removes files from the node
-func fileHandler(order Order,fileMap fileMap) {
-	if order.action == ADD {
+func fileHandler(order Order,fileMap FileMap) {
+	if order.Action == ADD {
 
-		fileMap.set(order.name,true)
+		fileMap.set(order.Name,true)
 		//checks if the file is already present
-		if _, err := os.Stat(fileDirectory + order.name); os.IsNotExist(err) {
-			err := ioutil.WriteFile(fileDirectory+string(os.PathSeparator)+order.name, order.content, 0644)
+		if _, err := os.Stat(fileDirectory + order.Name); os.IsNotExist(err) {
+			err := ioutil.WriteFile(fileDirectory+string(os.PathSeparator)+order.Name, order.Content, 0644)
 			if err != nil {
-				fmt.Println("something went wrong while creating file " + order.name)
+				fmt.Println("something went wrong while creating file " + order.Name)
 			}
 			fmt.Println("no update")
 		} else {
 			fmt.Println("update")
 			//only updates the file's modification date if it is already present
-			updateFile(order.name)
+			updateFile(order.Name)
 		}
-	} else if order.action == REMOVE {
-		err := os.Remove(fileDirectory + string(os.PathSeparator) + order.name)
-		fileMap.set(order.name,false)
+	} else if order.Action == REMOVE {
+		err := os.Remove(fileDirectory + string(os.PathSeparator) + order.Name)
+		fileMap.set(order.Name,false)
 		if err != nil {
-			fmt.Println("something went wrong while removing file " + order.name)
+			fmt.Println("something went wrong while removing file " + order.Name)
 		}
 	}
 }
@@ -68,19 +68,19 @@ func fileHandler(order Order,fileMap fileMap) {
 func fileHandlerWorker(orders chan Order) {
 	createFilesDirectory()
 	filesMap := populateFileMap()
-	fileMapStruct := fileMap{filesMap,  &sync.Mutex{}}
+	fileMapStruct := FileMap{filesMap,  &sync.Mutex{}}
 	for {
 		fileHandler(<-orders,fileMapStruct)
 	}
 }
 
-func (f fileMap) set (name string,isPresent bool){
+func (f FileMap) set (name string,isPresent bool){
 	f.lock.Lock()
 	f.mapPresent[name] = isPresent
 	f.lock.Unlock()
 }
 
-func (f fileMap) IsPresent (name string) bool{
+func (f FileMap) IsPresent (name string) bool{
 	f.lock.Lock()
 	isPresent := f.mapPresent[name]
 	f.lock.Unlock()
@@ -107,13 +107,13 @@ func populateFileMap() map[string]bool {
 //pin or unpin a file
 func pinFile(pinnedFiles *pinnedFilesStruct, ordersFromchan Order) {
 	pinnedFiles.lock.Lock()
-	if ordersFromchan.action == ADD {
-		if !checkIfInList(pinnedFiles.pinnedFiles, ordersFromchan.name) {
-			pinnedFiles.pinnedFiles[ordersFromchan.name] = true
+	if ordersFromchan.Action == ADD {
+		if !checkIfInList(pinnedFiles.pinnedFiles, ordersFromchan.Name) {
+			pinnedFiles.pinnedFiles[ordersFromchan.Name] = true
 		}
-	} else if ordersFromchan.action == REMOVE {
-		if checkIfInList(pinnedFiles.pinnedFiles, ordersFromchan.name) {
-			pinnedFiles.pinnedFiles[ordersFromchan.name] = false
+	} else if ordersFromchan.Action == REMOVE {
+		if checkIfInList(pinnedFiles.pinnedFiles, ordersFromchan.Name) {
+			pinnedFiles.pinnedFiles[ordersFromchan.Name] = false
 		}
 	}
 	pinnedFiles.lock.Unlock()

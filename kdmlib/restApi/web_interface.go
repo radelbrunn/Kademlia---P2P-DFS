@@ -8,21 +8,31 @@ import (
 	"strings"
 	"fmt"
 	"io"
+	filesUtils "Kademlia---P2P-DFS/kdmlib/fileutils"
 )
 
+type RestDependencies struct {
+	Map filesUtils.FileMap
 
+}
 
 // our main function
-func LaunchRestAPI() {
+func LaunchRestAPI(fileMap filesUtils.FileMap) {
 	router := mux.NewRouter()
-	router.HandleFunc("/{name}",getFile).Methods("GET")
+	dependencies := RestDependencies{fileMap}
+	router.HandleFunc("/{name}",dependencies.getFile).Methods("GET")
 	router.HandleFunc("/{name}",ReceiveFile).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
 
-func getFile(w http.ResponseWriter, r *http.Request) {
-	//TODO refactor to use the routing table and the network function
+func (dependencies RestDependencies)getFile (w http.ResponseWriter, r *http.Request) {
+	if dependencies.Map.IsPresent(mux.Vars(r)["name"]) {
+		//TODO send Back the file
+	}else{
+		//TODO try to get the file from another node
+	}
+
 
 
 }

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 	"fmt"
+	"sync"
 )
 
 func TestReadFileExist(t *testing.T) {
@@ -149,8 +150,9 @@ func TestShouldRemoveFile(t *testing.T){
 
 func TestCreateFile(t *testing.T){
 	os.Mkdir(".files/",0755)
+	fm := FileMap{make(map[string]bool),&sync.Mutex{}}
 
-	fileHandler(Order{ADD,"testFile",[]byte("helloWorld")})
+	fileHandler(Order{ADD,"testFile",[]byte("helloWorld")},fm)
 
 	dat := ReadFileFromOS("testFile")
 
@@ -165,9 +167,9 @@ func TestCreateFile(t *testing.T){
 
 func TestRemoveFile(t *testing.T){
 	os.Mkdir(".files/",0755)
-
-	fileHandler(Order{ADD,"testFile",[]byte("helloWorld")})
-	fileHandler(Order{REMOVE,"testFile",[]byte("helloWorld")})
+	fm := FileMap{make(map[string]bool),&sync.Mutex{}}
+	fileHandler(Order{ADD,"testFile",[]byte("helloWorld")},fm)
+	fileHandler(Order{REMOVE,"testFile",[]byte("helloWorld")},fm)
 
 	files, _ := ioutil.ReadDir(fileDirectory)
 	isremoved := true
@@ -188,10 +190,11 @@ func TestRemoveFile(t *testing.T){
 
 func TestUpdateFileFromHandler (t *testing.T){
 	os.Mkdir(".files/",0755)
+	fm := FileMap{make(map[string]bool),&sync.Mutex{}}
 
-	fileHandler(Order{ADD,"testFile",[]byte("helloWorld")})
+	fileHandler(Order{ADD,"testFile",[]byte("helloWorld")},fm)
 	timenow := time.Now()
-	fileHandler(Order{ADD,"testFile",[]byte("helloWorld")})
+	fileHandler(Order{ADD,"testFile",[]byte("helloWorld")},fm)
 	fi , _ := os.Stat(fileDirectory+string(os.PathSeparator)+"testFile")
 	if !timenow.Before(fi.ModTime()){
 		t.Error("time should be updated and is not")
