@@ -2,10 +2,7 @@ package main
 
 import (
 	"Kademlia---P2P-DFS/kdmlib"
-	"fmt"
 	"math/rand"
-	"net"
-	"time"
 )
 
 func main() {
@@ -15,21 +12,17 @@ func main() {
 	id3 := "00100"
 	id4 := "01000"
 	routingT := kdmlib.CreateAllWorkersForRoutingTable(20, 5, 5, "00000")
-	//routingT := kdmlib.CreateAllWorkersForRoutingTable(20,160,5,kdmlib.GenerateRandID())
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id1}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id2}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id3}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id4}, false})
-	time.Sleep(time.Second)
+	//time.Sleep(time.Second)
 
-	answerChannel := make(chan interface{})
-	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000")
-
-	nw := kdmlib.InitializeNetwork(5, 12000, routingT, false)
-	nw2 := kdmlib.InitializeNetwork(5, 9000, routingT, false)
-	fmt.Println("Sending a ping request")
-	nw2.SendPing(addr, answerChannel)
-	fmt.Println(nw)
+	//addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000") //<-- try this address when testing!
+	//answerChannel := make(chan interface{})
+	kdmlib.InitializeNetwork(5, 12000, routingT, false)
+	//nw2 := kdmlib.InitializeNetwork(5, 22000, routingT, false)
+	//go nw2.SendPing(addr, answerChannel)
 
 }
 

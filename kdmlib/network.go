@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -45,20 +46,28 @@ func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable, test bool) *
 	}
 	return network
 }
-func (network *Network) UDPConnection(Port int) { //TODO: learn how to properly use channels
-	ServerAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(Port))
+func (network *Network) UDPConnection(port int) {
+	ServerAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(port))
 	CheckError(err)
 
 	ServerConn, err := net.ListenUDP("udp", ServerAddr)
 	CheckError(err)
 	network.serverConn = ServerConn
 	buf := make([]byte, 1024)
-	go network.Listen(buf)
+
+	network.Listen(buf)
 
 }
-func (network *Network) Listen(buf []byte) {
+func (network *Network) Listen(buf []byte) { //pass ----> tasks []*workerPool.Task
 	defer network.serverConn.Close()
+	tasks := []*Task{}
+	p := NewPool(tasks, runtime.NumCPU())
 	for {
+		if len(tasks) >= 200 { //test
+			go p.Run(network)
+			tasks = []*Task{}
+		}
+
 		n, addr, err := network.serverConn.ReadFromUDP(buf)
 
 		container := &pb.Container{}
@@ -66,31 +75,27 @@ func (network *Network) Listen(buf []byte) {
 		if err != nil {
 			fmt.Println("Error: ", err)
 		}
-		fmt.Println(addr)
-		network.RequestHandler(container, addr)
+
+		task := NewTask(func() error { return nil }, container, addr) //pass args such as container, addr
+		tasks = append(tasks, task)
+		p = NewPool(tasks, runtime.NumCPU())
+
+		//go network.RequestHandler(container, addr) //remove this from here and call it from worker
 	}
 }
 func (network *Network) RequestHandler(container *pb.Container, addr *net.UDPAddr) {
 	switch container.REQUEST_ID {
 	case Ping:
-		fmt.Println("Received Ping_Request")
 		network.ReturnPing(addr, container.MSG_ID)
-		fmt.Println("Returned Ping_Request")
 		break
 	case FindContact:
-		fmt.Println("Received FindContact_Request")
 		network.ReturnContact(addr, container.MSG_ID, container.GetRequestContact().ID)
-		fmt.Println("Returned FindContact_Request")
 		break
 	case FindData:
-		fmt.Println("Received FindData_Request")
 		network.ReturnData(addr, container.MSG_ID, container.GetRequestData().KEY) //need to pass a co
-		fmt.Println("Returned FindData_Request")
 		break
 	case Store:
-		fmt.Println("Received Store_Request")
 		network.ReturnStore(addr, container.MSG_ID, container.GetRequestStore().KEY, container.GetRequestStore().VALUE)
-		fmt.Println("Returned Store_Request")
 		break
 	default:
 		fmt.Println("Something went horribly wrong! (Request)")
@@ -134,6 +139,7 @@ func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte
 
 //Someone ask something from you and you return!
 func (network *Network) ReturnPing(addr *net.UDPAddr, msgID string) {
+	//update routing table
 	myID := "qwerty"
 	Info := &pb.RETURN_PING{ID: myID}
 	Data := &pb.Container_ReturnPing{ReturnPing: Info}
@@ -141,7 +147,7 @@ func (network *Network) ReturnPing(addr *net.UDPAddr, msgID string) {
 	network.ReturnRequestedData(Container, addr)
 }
 func (network *Network) ReturnContact(addr *net.UDPAddr, msgID string, contactID string) {
-	closestContacts := network.rt.FindKClosest(contactID) //mux on this?
+	closestContacts := network.rt.FindKClosest(contactID)
 	contactListReply := []*pb.RETURN_CONTACTS_CONTACT_INFO{}
 	for i := range closestContacts {
 		contactReply := &pb.RETURN_CONTACTS_CONTACT_INFO{IP: closestContacts[i].Triple.Ip, PORT: closestContacts[i].Triple.Port,
@@ -229,19 +235,15 @@ func (network *Network) ReturnHandler(container *pb.Container) {
 	}
 	switch container.REQUEST_ID {
 	case Ping:
-		fmt.Println("Ping Returned")
 		PingReturned(container, returnedRequest)
 		break
 	case FindContact:
-		fmt.Println("Contact Returned")
 		ContactReturned(container, returnedRequest)
 		break
 	case FindData:
-		fmt.Println("Data Returned")
 		DataReturned(container, returnedRequest)
 		break
 	case Store:
-		fmt.Println("Store Returned")
 		StoreReturned(container, returnedRequest)
 		break
 	default:
@@ -279,5 +281,78 @@ func CheckError(err error) {
 	if err != nil {
 		fmt.Println("Error: ", err)
 		os.Exit(0)
+	}
+}
+
+//---------------------------------------------TEST-------------------------------------------------------
+type Task struct {
+	Err       error
+	container *pb.Container
+	addr      *net.UDPAddr
+	f         func() error
+}
+
+// NewTask initializes a new task based on a given work function.
+func NewTask(f func() error, container *pb.Container, addr *net.UDPAddr) *Task {
+	return &Task{f: f, container: container, addr: addr}
+}
+
+// Run runs a Task and does appropriate accounting via a given sync.WorkGroup.
+func (t *Task) Run(wg *sync.WaitGroup) {
+	t.Err = t.f()
+	wg.Done()
+}
+
+// Pool is a worker group that runs a number of tasks at a configured concurrency.
+type Pool struct {
+	Tasks       []*Task
+	concurrency int
+	tasksChan   chan *Task
+	wg          sync.WaitGroup
+}
+
+// NewPool initializes a new pool with the given tasks and at the given concurrency.
+func NewPool(tasks []*Task, concurrency int) *Pool {
+	return &Pool{
+		Tasks:       tasks,
+		concurrency: concurrency,
+		tasksChan:   make(chan *Task),
+	}
+}
+
+// HasErrors indicates whether there were any errors from tasks run. Its result
+// is only meaningful after Run has been called.
+func (p *Pool) HasErrors() bool {
+	for _, task := range p.Tasks {
+		if task.Err != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// Run runs all work within the pool and blocks until it's finished.
+func (p *Pool) Run(network *Network) {
+	for i := 0; i < p.concurrency; i++ {
+		go p.work(i, network)
+	}
+
+	p.wg.Add(len(p.Tasks))
+	for _, task := range p.Tasks {
+		p.tasksChan <- task
+	}
+
+	// all workers return
+	close(p.tasksChan)
+	p.wg.Wait()
+}
+
+// The work loop for any single goroutine.
+func (p *Pool) work(i int, network *Network) { //this could be a requestHandler?
+	for task := range p.tasksChan {
+		fmt.Println("worker", i, "processing job", task.addr)
+		//time.Sleep(time.Second*3)
+		network.RequestHandler(task.container, task.addr)
+		task.Run(&p.wg)
 	}
 }
