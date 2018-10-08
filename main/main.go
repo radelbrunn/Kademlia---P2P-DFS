@@ -16,6 +16,7 @@ func main() {
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id2}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id3}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id4}, false})
+
 	//time.Sleep(time.Second)
 
 	//addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000") //<-- try this address when testing!
@@ -23,8 +24,8 @@ func main() {
 	nodeId := kdmlib.GenerateRandID(int64(rand.Intn(100)))
 
 	kdmlib.InitializeNetwork(5, 12000, routingT, nodeId, false)
-	//nw2 := kdmlib.InitializeNetwork(5, 22000, routingT, false)
-	//go nw2.SendPing(addr, answerChannel)
+	//nw2 := kdmlib.InitializeNetwork(5, 22000, routingT,nodeId, false)
+	//nw2.SendPing(addr, answerChannel)
 
 }
 

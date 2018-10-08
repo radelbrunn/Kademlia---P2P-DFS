@@ -102,8 +102,8 @@ func (network *Network) RequestHandler(container *pb.Container, addr *net.UDPAdd
 	default:
 		fmt.Println("Something went horribly wrong! (Request)")
 	}
-	//todo: update routingtable
-	//network.rt.GiveOrder(OrderForRoutingTable{ADD, AddressTriple{"127.0.0.1", "9000", container.ID}, false})
+
+	//network.rt.GiveOrder(OrderForRoutingTable{ADD,AddressTriple{addr.IP.String(), "9000", container.ID}, false})
 
 }
 
@@ -113,7 +113,7 @@ func (network *Network) SendPing(addr *net.UDPAddr, returnChannel chan interface
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_PING{ID: myID}
 	Data := &pb.Container_RequestPing{RequestPing: Info}
-	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
+	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, ID: myID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
 }
@@ -121,7 +121,7 @@ func (network *Network) SendFindContact(addr *net.UDPAddr, contactID string, ret
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_CONTACT{ID: contactID}
 	Data := &pb.Container_RequestContact{RequestContact: Info}
-	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, Attachment: Data}
+	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, ID: network.nodeID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
 }
@@ -129,7 +129,7 @@ func (network *Network) SendFindData(addr *net.UDPAddr, hash string, returnChann
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_DATA{KEY: hash}
 	Data := &pb.Container_RequestData{RequestData: Info}
-	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, Attachment: Data}
+	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, ID: network.nodeID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
 }
@@ -137,7 +137,7 @@ func (network *Network) SendStoreData(addr *net.UDPAddr, KEY string, DATA []byte
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_STORE{KEY: KEY, VALUE: DATA}
 	Data := &pb.Container_RequestStore{RequestStore: Info}
-	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, Attachment: Data}
+	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, ID: network.nodeID, Attachment: Data}
 	network.putInQueue(msgID, returnChannel)
 	network.RequestData(Container, addr)
 }
@@ -147,7 +147,7 @@ func (network *Network) ReturnPing(addr *net.UDPAddr, msgID string) {
 	myID := network.nodeID
 	Info := &pb.RETURN_PING{ID: myID}
 	Data := &pb.Container_ReturnPing{ReturnPing: Info}
-	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
+	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Ping, MSG_ID: msgID, ID: network.nodeID, Attachment: Data}
 	network.ReturnRequestedData(Container, addr)
 }
 func (network *Network) ReturnContact(addr *net.UDPAddr, msgID string, contactID string) {
@@ -160,7 +160,7 @@ func (network *Network) ReturnContact(addr *net.UDPAddr, msgID string, contactID
 	}
 	Info := &pb.RETURN_CONTACTS{ContactInfo: contactListReply}
 	Data := &pb.Container_ReturnContacts{ReturnContacts: Info}
-	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindContact, MSG_ID: msgID, Attachment: Data}
+	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindContact, MSG_ID: msgID, ID: network.nodeID, Attachment: Data}
 	network.ReturnRequestedData(Container, addr)
 }
 func (network *Network) ReturnData(addr *net.UDPAddr, msgID string, DataID string) {
@@ -169,7 +169,7 @@ func (network *Network) ReturnData(addr *net.UDPAddr, msgID string, DataID strin
 		Value := fileUtilsKademlia.ReadFileFromOS(DataID)
 		Info := &pb.RETURN_DATA{VALUE: Value}
 		Data := &pb.Container_ReturnData{ReturnData: Info}
-		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: msgID, Attachment: Data}
+		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: msgID, ID: network.nodeID, Attachment: Data}
 		network.ReturnRequestedData(Container, addr)
 	} else {
 		network.ReturnContact(addr, msgID, network.kademlia.nodeId) //this should return my closest contacts? nodeID is my id?
@@ -181,9 +181,9 @@ func (network *Network) ReturnStore(addr *net.UDPAddr, msgID string, key string,
 
 	Info := &pb.RETURN_STORE{VALUE: "Stored"}
 	Data := &pb.Container_ReturnStore{ReturnStore: Info}
-	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Store, MSG_ID: msgID, Attachment: Data}
+	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: Store, MSG_ID: msgID, ID: network.nodeID, Attachment: Data}
 	network.ReturnRequestedData(Container, addr)
-
+	//todo: implement tcp file transfer to replace this!
 }
 
 //Someone returns something you previously asked for!
@@ -253,6 +253,8 @@ func (network *Network) ReturnHandler(container *pb.Container) {
 	default:
 		fmt.Println("Something went horribly wrong! (Return)")
 	}
+	//network.rt.GiveOrder(OrderForRoutingTable{ADD, AddressTriple{addr.IP.String(), "9000", container.ID}, false})
+
 }
 func (network *Network) ReturnRequestedData(container *pb.Container, addr *net.UDPAddr) {
 
