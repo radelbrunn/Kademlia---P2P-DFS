@@ -161,8 +161,6 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 					//if order comes from a pinger dont send a new order to the pinger channel
 					if !order.FromPinger {
 						sendToPinger(routingTable, index, order, pingerChannel, ordersToSend)
-					} else {
-						(*(routingTable.cache))[index].PushFront(list.Element{})
 					}
 				}
 			}
