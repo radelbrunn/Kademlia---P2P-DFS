@@ -6,6 +6,8 @@ import (
 	filesUtils "Kademlia---P2P-DFS/kdmlib/fileutils"
 	"log"
 	"strconv"
+	"io/ioutil"
+	"crypto/sha1"
 )
 
 type RestDependencies struct {
@@ -41,9 +43,20 @@ func (dependencies RestDependencies) getFile(w http.ResponseWriter, r *http.Requ
 }
 
 func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.Request) {
-	//TODO read file into a buffer, send order to channel, and launch the right function to send the file
-	// to the other nodes and compute 160 bits hash. Has to send back the name to the sender.
+	b, err := ioutil.ReadAll(r.Body)
+	hash := sha1.Sum(b)
+	stringHash := string(hash[:])
 
+	//TODO send request to k closest nodes
+	dependencies.FileChannel <- filesUtils.Order{ filesUtils.ADD,stringHash , b}
+
+	if err!=nil{
+		w.WriteHeader(500)
+		w.Write([]byte("server error"))
+	}else{
+		w.WriteHeader(200)
+		w.Write([]byte(stringHash))
+	}
 }
 
 func (dependencies RestDependencies) pin(w http.ResponseWriter, r *http.Request) {
