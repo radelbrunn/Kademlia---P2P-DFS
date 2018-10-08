@@ -23,6 +23,8 @@ func LaunchRestAPI() {
 
 func getFile(w http.ResponseWriter, r *http.Request) {
 	//TODO refactor to use the routing table and the network function
+
+
 }
 
 func ReceiveFile(w http.ResponseWriter, r *http.Request) {
