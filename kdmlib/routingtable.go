@@ -249,7 +249,11 @@ func createRoutingTable(k int, idLength int) routingTableAndCache {
 }
 
 func isPresentInRoutingTable(routingTable routingTableAndCache, triple AddressTriple, ownid string) bool {
-	i, _ := firstDifferentBit(ownid, triple.Id)
+	i, err := firstDifferentBit(ownid, triple.Id)
+	if err!=nil{
+		fmt.Println(err)
+		return false
+	}
 	for j := (*(routingTable.routingTable))[i].Front(); j != nil; j = j.Next() {
 		value, ok := j.Value.(AddressTriple)
 		id := value.Id
