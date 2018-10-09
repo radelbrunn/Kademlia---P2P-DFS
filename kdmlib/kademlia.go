@@ -109,104 +109,18 @@ func (kademlia *Kademlia) LookupContact(target AddressTriple) []AddressTriple {
 			}
 		}
 	}
-
-	/*/Channel listener
-	for {
-		select {
-		case answer := <-answerChannel:
-			switch answer := answer.(type) {
-			case []AddressTriple:
-				kademlia.RefreshClosest(answer, target.Id)
-				if kademlia.identicalCalls > kademlia.identicalThreshold {
-					fmt.Println("Contacts found (multiple consecutive same answers)")
-					return kademlia.closest
-				} else {
-					kademlia.AskNextContact(target.Id, answerChannel)
-				}
-			case bool:
-				fmt.Println("Timeout occurred!")
-				kademlia.AskNextContact(target.Id, answerChannel)
-			}
-
-		default:
-			if kademlia.goroutines == 0 {
-				return kademlia.closest
-			}
-		}
-	}*/
 }
 
-//TODO add timeout handling (bool channel input??)
-// Returns the file, according to the hashed filename, or a list of closest contacts, if a file is not found.
-// Creates a channel and executes the calls to different nodes in separate goroutines
-// Stops if same answer is received multiple times (contacts), if all contacts in kademlia.closest have been asked or if the data is located.
-/*
-'func (kademlia *Kademlia) LookupDataHelper(hash string) ([]AddressTriple, string) {
-	answerChannel := make(chan interface{}, kademlia.alpha)
-	kademlia.closest = []AddressTriple{}
-
-	for _, e := range kademlia.rt.FindKClosest(hash) {
-		kademlia.closest = append(kademlia.closest, e.Triple)
-	}
-
-	//Loop through the closest contacts from the routing table
-	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
-		fmt.Println("Sending find data message")
-		kademlia.goroutines++
-		go kademlia.network.SendFindData(ConvertToUDPAddr(kademlia.closest[i]), hash, answerChannel)
-
-		//TODO: worker pool
-		//Two channels: One to give order to workers,
-		//Second to get answer (answerChannel)
-		//Send order to chan1 depending on the outcome. AT the end close chan1 => end the lookup process
-
-
-		kademlia.asked[kademlia.closest[i].Id] = true
-	}
-
-	//Channel listener
-	for {
-		select {
-		case answer := <-answerChannel:
-			switch answer := answer.(type) {
-			case string:
-				return []AddressTriple{}, answer
-			case []AddressTriple:
-				kademlia.RefreshClosest(answer, hash)
-				if kademlia.identicalCalls > kademlia.identicalThreshold {
-					fmt.Println("File not found (multiple consecutive same answers)")
-					return kademlia.closest, ""
-				} else {
-					kademlia.AskNextContact(hash, answerChannel)
-				}
-			case bool:
-				fmt.Println("Timeout occurred!")
-				kademlia.AskNextContact(hash, answerChannel)
-			}
-
-		default:
-			if kademlia.goroutines == 0 {
-				return kademlia.closest, ""
-			}
-		}
-	}
-}
-func (kademlia *Kademlia) LookupData(fileName string) bool {
-	_, data := kademlia.LookupDataHelper(HashKademliaID(fileName))
-	if data != "" {
-		fmt.Println("LookupData did not find data")
-		return false
+//Ask the next contact, which is fetched from kademlia.GetNextContact()
+func (kademlia *Kademlia) AskNextContact(target string, lookupChannel chan LookupOrder, answerChannel chan interface{}) {
+	nextContact := kademlia.GetNextContact()
+	if nextContact != nil {
+		fmt.Println("Next ", nextContact)
+		lookupChannel <- LookupOrder{CONTACT_LOOKUP, *nextContact, target}
+		//go kademlia.network.SendFindContact(ConvertToUDPAddr(*nextNode), target, answerChannel)
 	} else {
-		fmt.Println("LookupData found data")
-		//download the file in a separate thread
-		return true
+		fmt.Println("No more to ask")
 	}
-}
-
-*/
-
-// Stores a file locally
-func (kademlia *Kademlia) Store(data []byte, fileName string) {
 }
 
 // Goes through the list of closest contacts and returns the next node to ask
@@ -218,17 +132,6 @@ func (kademlia *Kademlia) GetNextContact() *AddressTriple {
 		}
 	}
 	return nil
-}
-
-func (kademlia *Kademlia) AskNextContact(target string, lookupChannel chan LookupOrder, answerChannel chan interface{}) {
-	nextContact := kademlia.GetNextContact()
-	if nextContact != nil {
-		fmt.Println("Next ", nextContact)
-		lookupChannel <- LookupOrder{CONTACT_LOOKUP, *nextContact, target}
-		//go kademlia.network.SendFindContact(ConvertToUDPAddr(*nextNode), target, answerChannel)
-	} else {
-		fmt.Println("No more to ask")
-	}
 }
 
 // Refreshes the list of closest contacts
@@ -256,7 +159,7 @@ func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target str
 		kademlia.identicalCalls = 0
 	}
 
-	//return only K closest ones (remove the tail)
+	//TODO: return only K closest ones (remove the tail)
 	//kademlia.closest = kademlia.closest[:kademlia.k]
 }
 
