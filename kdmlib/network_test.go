@@ -15,7 +15,7 @@ func TestNetwork_SendPing(t *testing.T) {
 	myID := "qwerty"
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	network := InitializeNetwork(3, 12345, rt, true)
+	network := InitializeNetwork(3, 12345, rt, nodeId, true)
 
 	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000")
 	conn, _ := net.ListenUDP("udp", addr)
@@ -43,7 +43,7 @@ func TestNetwork_SendPing(t *testing.T) {
 func TestNetwork_SendFindContact(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	network := InitializeNetwork(3, 12000, rt, true)
+	network := InitializeNetwork(3, 12000, rt, nodeId, true)
 
 	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000")
 	conn, _ := net.ListenUDP("udp", addr)
@@ -72,7 +72,7 @@ func TestNetwork_SendFindContact(t *testing.T) {
 func TestNetwork_SendFindData(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	network := InitializeNetwork(3, 12000, rt, true)
+	network := InitializeNetwork(3, 12000, rt, nodeId, true)
 
 	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000")
 	conn, _ := net.ListenUDP("udp", addr)
@@ -101,7 +101,7 @@ func TestNetwork_SendFindData(t *testing.T) {
 func TestNetwork_SendStoreData(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	network := InitializeNetwork(3, 12000, rt, true)
+	network := InitializeNetwork(3, 12000, rt, nodeId, true)
 
 	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000")
 	conn, _ := net.ListenUDP("udp", addr)
@@ -134,7 +134,7 @@ func TestNetwork_ReturnPing(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 
-	network := InitializeNetwork(5, 12000, rt, false)
+	network := InitializeNetwork(5, 12000, rt, nodeId, false)
 	answerChannel := make(chan interface{})
 	network.putInQueue(msgID, answerChannel)
 
@@ -169,7 +169,7 @@ func TestNetwork_ReturnContact(t *testing.T) {
 	rt.GiveOrder(OrderForRoutingTable{ADD, AddressTriple{"127.0.0.1", "9000", "00100"}, false})
 	rt.GiveOrder(OrderForRoutingTable{ADD, AddressTriple{"127.0.0.1", "9000", "01000"}, false})
 
-	network := InitializeNetwork(5, 12343, rt, false)
+	network := InitializeNetwork(5, 12343, rt, contactID, false)
 	answerChannel := make(chan interface{})
 	network.putInQueue(msgID, answerChannel)
 
@@ -217,7 +217,7 @@ func TestNetwork_ReturnData(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 
-	network := InitializeNetwork(5, 23423, rt, false)
+	network := InitializeNetwork(5, 23423, rt, nodeId, false)
 	answerChannel := make(chan interface{})
 	network.putInQueue(msgID, answerChannel)
 
@@ -248,7 +248,7 @@ func TestNetwork_ReturnStore(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 
-	network := InitializeNetwork(5, 23223, rt, false)
+	network := InitializeNetwork(5, 23223, rt, nodeId, false)
 	answerChannel := make(chan interface{})
 	network.putInQueue(msgID, answerChannel)
 
@@ -280,7 +280,7 @@ func TestPingReturned(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	network := InitializeNetwork(5, 12312, rt, false)
+	network := InitializeNetwork(5, 12312, rt, nodeId, false)
 
 	Info := &pb.REQUEST_PING{ID: myID}
 	Data := &pb.Container_RequestPing{RequestPing: Info}
@@ -311,7 +311,7 @@ func TestContactReturned(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	network := InitializeNetwork(5, 31212, rt, false)
+	network := InitializeNetwork(5, 31212, rt, nodeId, false)
 
 	Info := &pb.REQUEST_CONTACT{ID: contactID}
 	Data := &pb.Container_RequestContact{RequestContact: Info}

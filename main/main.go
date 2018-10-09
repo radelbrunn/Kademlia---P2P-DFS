@@ -7,11 +7,13 @@ import (
 
 func main() {
 
-	id1 := "00001"
-	id2 := "00010"
-	id3 := "00100"
-	id4 := "01000"
-	routingT := kdmlib.CreateAllWorkersForRoutingTable(20, 5, 5, "00000")
+	ownId := "0000"
+
+	id1 := "0001"
+	id2 := "0010"
+	id3 := "0100"
+	id4 := "1000"
+	routingT := kdmlib.CreateAllWorkersForRoutingTable(20, 4, 5, ownId)
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id1}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id2}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id3}, false})
@@ -21,9 +23,12 @@ func main() {
 
 	//addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000") //<-- try this address when testing!
 	//answerChannel := make(chan interface{})
-	nodeId := kdmlib.GenerateRandID(int64(rand.Intn(100)))
 
-	kdmlib.InitializeNetwork(5, 12000, routingT, nodeId, false)
+	nw := kdmlib.InitializeNetwork(5, 12000, routingT, ownId, true)
+	kd := kdmlib.NewKademliaInstance(nw, ownId, kdmlib.ALPHA, kdmlib.K, routingT)
+	kd.LookupContact(kdmlib.AddressTriple{"127.0.0.1", "9000", "1001"})
+	//	kd.LookupContact("1001", false)
+
 	//nw2 := kdmlib.InitializeNetwork(5, 22000, routingT,nodeId, false)
 	//nw2.SendPing(addr, answerChannel)
 
