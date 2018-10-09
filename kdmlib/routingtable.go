@@ -145,9 +145,9 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 		//fmt.Println(element.Value.(string))
 		var index int
 
-		index, _ = firstDifferentBit(order.Target.Id, ownId)
+		index, errorLength := firstDifferentBit(order.Target.Id, ownId)
 		//discard if id is not ok
-		if index != -1 {
+		if errorLength == nil {
 			//lock the table while modifying it
 			routingTable.lock.Lock()
 			if order.Action == ADD {
@@ -172,6 +172,8 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 			}
 
 			routingTable.lock.Unlock()
+		} else {
+			fmt.Println(errorLength)
 		}
 
 	}
