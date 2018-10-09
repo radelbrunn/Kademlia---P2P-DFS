@@ -49,10 +49,11 @@ func (kademlia *Kademlia) LookupWorker(routineId int, lookupChannel <-chan Looku
 	fmt.Println("Goroutine ", routineId, " started...")
 	for order := range lookupChannel {
 		if order.LookupType == CONTACT_LOOKUP {
-			fmt.Println("Lookup")
+			fmt.Println("CONTACT_LOOKUP")
 			answerChannel <- []AddressTriple{order.Contact}
 			//kademlia.network.SendFindContact(ConvertToUDPAddr(order.Contact),order.Target, answerChannel)
 		} else if order.LookupType == DATA_LOOKUP {
+			fmt.Println("DATA_LOOKUP")
 			//kademlia.network.SendFindData(ConvertToUDPAddr(order.Contact),order.Target, answerChannel)
 		}
 	}
@@ -61,7 +62,7 @@ func (kademlia *Kademlia) LookupWorker(routineId int, lookupChannel <-chan Looku
 // Returns up to K closest contacts to the target contact.
 // Creates a channel and executes the calls to different nodes in separate goroutines
 // Stops if same answer is received multiple times or if all contacts in kademlia.closest have been asked.
-func (kademlia *Kademlia) LookupContact(target AddressTriple) []AddressTriple {
+func (kademlia *Kademlia) LookupContact(target string, findData bool) []AddressTriple {
 	lookupChannel := make(chan LookupOrder, kademlia.alpha)
 	answerChannel := make(chan interface{}, kademlia.alpha)
 
@@ -69,7 +70,7 @@ func (kademlia *Kademlia) LookupContact(target AddressTriple) []AddressTriple {
 	kademlia.askedClosest = []AddressTriple{}
 
 	//Append Triples from TripleAndDistance array to the slice of closest
-	for _, e := range kademlia.rt.FindKClosest(target.Id) {
+	for _, e := range kademlia.rt.FindKClosest(target) {
 		kademlia.closest = append(kademlia.closest, e.Triple)
 	}
 
@@ -83,7 +84,12 @@ func (kademlia *Kademlia) LookupContact(target AddressTriple) []AddressTriple {
 	//Loop through the closest contacts from the routing table
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
 
-		lookupChannel <- LookupOrder{CONTACT_LOOKUP, kademlia.closest[i], target.Id}
+		if !findData {
+			lookupChannel <- LookupOrder{CONTACT_LOOKUP, kademlia.closest[i], target}
+		} else {
+			lookupChannel <- LookupOrder{DATA_LOOKUP, kademlia.closest[i], target}
+
+		}
 
 		kademlia.askedClosest = append(kademlia.askedClosest, kademlia.closest[i])
 	}
@@ -94,12 +100,12 @@ func (kademlia *Kademlia) LookupContact(target AddressTriple) []AddressTriple {
 			switch answer := answer.(type) {
 			case []AddressTriple:
 				fmt.Println(answer)
-				kademlia.RefreshClosest(answer, target.Id)
+				kademlia.RefreshClosest(answer, target)
 				if kademlia.identicalCalls > kademlia.identicalThreshold {
 					fmt.Println("Contacts found (multiple consecutive same answers)")
 					return kademlia.closest
 				} else {
-					kademlia.AskNextContact(target.Id, lookupChannel, answerChannel)
+					kademlia.AskNextContact(target, findData, lookupChannel, answerChannel)
 				}
 			}
 
@@ -112,12 +118,16 @@ func (kademlia *Kademlia) LookupContact(target AddressTriple) []AddressTriple {
 }
 
 //Ask the next contact, which is fetched from kademlia.GetNextContact()
-func (kademlia *Kademlia) AskNextContact(target string, lookupChannel chan LookupOrder, answerChannel chan interface{}) {
+func (kademlia *Kademlia) AskNextContact(target string, findData bool, lookupChannel chan LookupOrder, answerChannel chan interface{}) {
 	nextContact := kademlia.GetNextContact()
 	if nextContact != nil {
 		fmt.Println("Next ", nextContact)
-		lookupChannel <- LookupOrder{CONTACT_LOOKUP, *nextContact, target}
-		//go kademlia.network.SendFindContact(ConvertToUDPAddr(*nextNode), target, answerChannel)
+		if !findData {
+			lookupChannel <- LookupOrder{CONTACT_LOOKUP, *nextContact, target}
+		} else {
+			lookupChannel <- LookupOrder{DATA_LOOKUP, *nextContact, target}
+
+		}
 	} else {
 		fmt.Println("No more to ask")
 	}

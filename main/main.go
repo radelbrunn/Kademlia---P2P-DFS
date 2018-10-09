@@ -13,11 +13,13 @@ func main() {
 	id2 := "0010"
 	id3 := "0100"
 	id4 := "1000"
+	id5 := "0011"
 	routingT := kdmlib.CreateAllWorkersForRoutingTable(20, 4, 5, ownId)
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id1}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id2}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id3}, false})
 	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id4}, false})
+	routingT.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, kdmlib.AddressTriple{"127.0.0.1", "9000", id5}, false})
 
 	//time.Sleep(time.Second)
 
@@ -26,7 +28,7 @@ func main() {
 
 	nw := kdmlib.InitializeNetwork(5, 12000, routingT, ownId, true)
 	kd := kdmlib.NewKademliaInstance(nw, ownId, kdmlib.ALPHA, kdmlib.K, routingT)
-	kd.LookupContact(kdmlib.AddressTriple{"127.0.0.1", "9000", "1001"})
+	kd.LookupContact(kdmlib.AddressTriple{"127.0.0.1", "9000", "1001"}.Id, false)
 	//	kd.LookupContact("1001", false)
 
 	//nw2 := kdmlib.InitializeNetwork(5, 22000, routingT,nodeId, false)
