@@ -146,31 +146,34 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 		var index int
 
 		index, _ = firstDifferentBit(order.Target.Id, ownId)
-
-		//lock the table while modifying it
-		routingTable.lock.Lock()
-		if order.Action == ADD {
-			//if in table then same behavior than bump
-			if isPresentInRoutingTable(routingTable, order.Target, ownId) {
-				bumpElement(routingTable, index, order)
-			} else {
-				//if free space add it
-				if (*(routingTable.routingTable))[index].Len() < k {
-					(*(routingTable.routingTable))[index].PushFront(order.Target)
+		//discard if id is not ok
+		if index != -1 {
+			//lock the table while modifying it
+			routingTable.lock.Lock()
+			if order.Action == ADD {
+				//if in table then same behavior than bump
+				if isPresentInRoutingTable(routingTable, order.Target, ownId) {
+					bumpElement(routingTable, index, order)
 				} else {
-					//if order comes from a pinger dont send a new order to the pinger channel
-					if !order.FromPinger {
-						sendToPinger(routingTable, index, order, pingerChannel, ordersToSend)
+					//if free space add it
+					if (*(routingTable.routingTable))[index].Len() < k {
+						(*(routingTable.routingTable))[index].PushFront(order.Target)
+					} else {
+						//if order comes from a pinger dont send a new order to the pinger channel
+						if !order.FromPinger {
+							sendToPinger(routingTable, index, order, pingerChannel, ordersToSend)
+						}
 					}
 				}
+			} else if order.Action == REMOVE {
+				removeFromRoutingTable(routingTable, index, order)
+			} else if order.Action == CACHE {
+				//(*(routingTable.cache))[index].PushFront(*(order.target))
 			}
-		} else if order.Action == REMOVE {
-			removeFromRoutingTable(routingTable, index, order)
-		} else if order.Action == CACHE {
-			//(*(routingTable.cache))[index].PushFront(*(order.target))
+
+			routingTable.lock.Unlock()
 		}
 
-		routingTable.lock.Unlock()
 	}
 
 }
