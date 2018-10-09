@@ -178,7 +178,7 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 func sendToPinger(routingTable routingTableAndCache, index int, order OrderForRoutingTable, pingerChannel chan OrderForPinger, ordersToSend *list.List) {
 	var last *list.Element
 	for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
-		if ele.Value!=nil{
+		if ele.Value != nil {
 			last = ele
 		}
 	}
@@ -205,8 +205,6 @@ func removeFromRoutingTable(routingTable routingTableAndCache, index int, order 
 			(*(routingTable.routingTable))[index].Remove(ele)
 			break
 		}
-
-		routingTable.lock.Unlock()
 	}
 
 }
@@ -250,7 +248,7 @@ func createRoutingTable(k int, idLength int) routingTableAndCache {
 
 func isPresentInRoutingTable(routingTable routingTableAndCache, triple AddressTriple, ownid string) bool {
 	i, err := firstDifferentBit(ownid, triple.Id)
-	if err!=nil{
+	if err != nil {
 		fmt.Println(err)
 		return false
 	}

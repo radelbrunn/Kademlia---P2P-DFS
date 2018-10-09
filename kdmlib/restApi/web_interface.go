@@ -37,6 +37,7 @@ func (dependencies RestDependencies) getFile(w http.ResponseWriter, r *http.Requ
 		w.Header().Set("Content-Length", strconv.Itoa(len(value)))
 		w.Write(value)
 	} else {
+
 		//TODO try to get the file from another node , send back 404 if not found, 200 and file if found
 
 	}
@@ -48,6 +49,7 @@ func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.
 	stringHash := string(hash[:])
 
 	//TODO send request to k closest nodes
+
 	dependencies.FileChannel <- filesUtils.Order{ filesUtils.ADD,stringHash , b}
 
 	if err!=nil{
@@ -60,7 +62,7 @@ func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.
 }
 
 func (dependencies RestDependencies) pin(w http.ResponseWriter, r *http.Request) {
-	dependencies.Pinning <- filesUtils.Order{filesUtils.ADD, mux.Vars(r)["name"], nil}
+	dependencies.Pinning <- filesUtils.Order{Action: filesUtils.ADD, Name: mux.Vars(r)["name"]}
 	w.WriteHeader(200)
 	w.Write(nil)
 }
