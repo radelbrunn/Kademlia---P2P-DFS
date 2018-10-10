@@ -26,18 +26,18 @@ type Network struct {
 	rt          RoutingTable
 	port        string
 	serverConn  *net.UDPConn
-	timeLimit   int
 	nodeID      string
 }
 
-func InitializeNetwork(timeOutLimit int, port string, rt RoutingTable, nodeID string, test bool) *Network {
+func InitializeNetwork(port string, rt RoutingTable, nodeID string, test bool) *Network {
 	network := &Network{}
 	network.rt = rt
 	network.port = port
-	network.timeLimit = timeOutLimit
 	network.nodeID = nodeID
+	network.fileChannel = make(chan fileUtilsKademlia.Order)
 
 	if !test {
+		network.UdpServer(3, network.fileChannel)
 	}
 
 	return network
@@ -176,9 +176,9 @@ func (network *Network) SendStore(distantIp string, distantId string, distantPor
 }
 
 //send findnode request, return an address triple slice
-func (network *Network) SendFindNode(distantIp string, distantId string, distantPort string, idToLookFor string) ([]AddressTriple, error) {
+func (network *Network) SendFindNode(distantIp string, distantId string, distantPort string, targetID string) ([]AddressTriple, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
-	Info := &pb.REQUEST_CONTACT{ID: idToLookFor}
+	Info := &pb.REQUEST_CONTACT{ID: targetID}
 	Data := &pb.Container_RequestContact{RequestContact: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, ID: network.nodeID, PORT: network.port, Attachment: Data}
 	marshalled, _ := proto.Marshal(Container)
@@ -200,9 +200,9 @@ func (network *Network) SendFindNode(distantIp string, distantId string, distant
 }
 
 //send finddata request, if err = nil , first returned value is the data , if data == nil get address triple from the second value.
-func (network *Network) SendFindData(distantIp string, distantId string, distantPort string, idToLookFor string) ([]byte, []AddressTriple, error) {
+func (network *Network) SendFindData(distantIp string, distantId string, distantPort string, targetID string) ([]byte, []AddressTriple, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
-	Info := &pb.REQUEST_DATA{KEY: idToLookFor}
+	Info := &pb.REQUEST_DATA{KEY: targetID}
 	Data := &pb.Container_RequestData{RequestData: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
 	marshalled, _ := proto.Marshal(Container)
