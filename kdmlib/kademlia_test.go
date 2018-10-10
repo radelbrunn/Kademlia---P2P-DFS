@@ -8,7 +8,7 @@ import (
 func TestKademlia_SortContacts(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	nw := InitializeNetwork(3, 12000, rt, true)
+	nw := InitializeNetwork(3, 12000, rt, nodeId, true)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
 
 	target := "1111"
@@ -31,7 +31,7 @@ func TestKademlia_SortContacts(t *testing.T) {
 func TestKademlia_RefreshClosest(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	nw := InitializeNetwork(3, 12000, rt, true)
+	nw := InitializeNetwork(3, 12000, rt, nodeId, true)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
 
 	target := "1111"
@@ -74,7 +74,7 @@ func TestKademlia_RefreshClosest(t *testing.T) {
 func TestKademlia_GetNextContact(t *testing.T) {
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
-	nw := InitializeNetwork(3, 12000, rt, true)
+	nw := InitializeNetwork(3, 12000, rt, nodeId, true)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
 
 	t1 := AddressTriple{"t1", "00", "1001"}

@@ -150,3 +150,12 @@ func ConvertToUDPAddr(contact AddressTriple) *net.UDPAddr {
 		return addr
 	}
 }
+
+func AlreadyAsked(asked []AddressTriple, c AddressTriple) bool {
+	for _, element := range asked {
+		if c.Id == element.Id {
+			return true
+		}
+	}
+	return false
+}
