@@ -29,7 +29,7 @@ func main() {
 
 	nw := kdmlib.InitNetwork("12000", routingT, ownId, true)
 	kd := kdmlib.NewKademliaInstance(nw, ownId, kdmlib.ALPHA, kdmlib.K, routingT)
-	contacts, file := kd.LookupContact(kdmlib.AddressTriple{"127.0.0.1", "9000", "1001"}.Id, false)
+	contacts, file := kd.LookupContact(kdmlib.AddressTriple{"127.0.0.1", "9000", "1001"}.Id, kdmlib.CONTACT_LOOKUP)
 
 	fmt.Println("Contacts: ", contacts)
 	fmt.Println("File: ", file)
