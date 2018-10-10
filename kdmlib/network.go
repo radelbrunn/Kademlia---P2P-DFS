@@ -76,7 +76,7 @@ func ConnectionWorker(packetsChan chan udpPacketAndInfo, conn net.PacketConn , n
 
 //handle the container according to its id, and update routing table
 func requestHandler(container *pb.Container,conn net.PacketConn,addr net.Addr , table RoutingTable,nodeId string,fileChannel chan fileUtilsKademlia.Order){
-	switch container.ID {
+	switch container.REQUEST_ID {
 	case Ping:
 		conn.WriteTo([]byte("pong"),addr)
 		break
