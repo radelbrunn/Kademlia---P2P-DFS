@@ -1,15 +1,16 @@
 package kdmlib
 
 import (
+	"Kademlia---P2P-DFS/github.com/golang/protobuf/proto"
+	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
 	"container/list"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"sort"
-	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
 	"sync"
 	"time"
-	"math/rand"
 )
 
 const (
@@ -225,9 +226,9 @@ func ping(address AddressTriple) error {
 	Info := &pb.REQUEST_PING{ID: "asdasd"}
 	Data := &pb.Container_RequestPing{RequestPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
-
+	marshaled, _ := proto.Marshal(Container)
 	//simple write
-	conn.Write([]byte(EncodeContainer(Container)))
+	conn.Write(marshaled)
 
 	conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 	//simple Read
