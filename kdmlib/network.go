@@ -8,9 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -26,20 +24,21 @@ const (
 type Network struct {
 	fileChannel chan fileUtilsKademlia.Order
 	rt          RoutingTable
+	port        string
 	serverConn  *net.UDPConn
-	mux         *sync.Mutex
-	queue       map[string]chan interface{} //<-change?
 	timeLimit   int
 	nodeID      string
 }
 
-func InitializeNetwork(timeOutLimit int, port int, rt RoutingTable, nodeID string, test bool) *Network {
+func InitializeNetwork(timeOutLimit int, port string, rt RoutingTable, nodeID string, test bool) *Network {
 	network := &Network{}
 	network.rt = rt
-	network.mux = &sync.Mutex{}
-	network.queue = make(map[string]chan interface{})
+	network.port = port
 	network.timeLimit = timeOutLimit
 	network.nodeID = nodeID
+
+	if !test {
+	}
 
 	return network
 }
@@ -51,15 +50,15 @@ type udpPacketAndInfo struct {
 }
 
 //launch the udp server on port "port", with the specified amount of workers. needs the routing table and file channel
-func (network *Network) UdpServer(port int, numberOfWorkers int, ownId string, fileChannel chan fileUtilsKademlia.Order) {
-	pc, err := net.ListenPacket("udp", ":"+strconv.Itoa(port))
+func (network *Network) UdpServer(numberOfWorkers int, fileChannel chan fileUtilsKademlia.Order) {
+	pc, err := net.ListenPacket("udp", ":"+network.port)
 	packetsChan := make(chan udpPacketAndInfo, 500)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for i := 0; i < numberOfWorkers; i++ {
-		go network.ConnectionWorker(packetsChan, pc, ownId, fileChannel)
+		go network.ConnectionWorker(packetsChan, pc, network.nodeID, fileChannel)
 	}
 
 	for {
@@ -160,12 +159,12 @@ func (network *Network) sendPacket(ip string, port string, packet []byte) ([]byt
 }
 
 //send store request
-func (network *Network) SendStore(distantIp string, distantId string, distantPort string, data []byte, dataName string, ownId string, ownPort string) (string, error) {
+func (network *Network) SendStore(distantIp string, distantId string, distantPort string, data []byte, dataName string) (string, error) {
 	fmt.Println("sending store request")
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_STORE{KEY: dataName, VALUE: data}
 	Data := &pb.Container_RequestStore{RequestStore: Info}
-	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, ID: ownId, Attachment: Data, PORT: ownPort}
+	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
 	marshalled, _ := proto.Marshal(Container)
 	answer, err := network.sendPacket(distantIp, distantPort, marshalled)
 	if err != nil {
@@ -177,11 +176,11 @@ func (network *Network) SendStore(distantIp string, distantId string, distantPor
 }
 
 //send findnode request, return an address triple slice
-func (network *Network) SendFindNode(distantIp string, distantId string, distantPort string, ownId string, ownPort string, idToLookFor string) ([]AddressTriple, error) {
+func (network *Network) SendFindNode(distantIp string, distantId string, distantPort string, idToLookFor string) ([]AddressTriple, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_CONTACT{ID: idToLookFor}
 	Data := &pb.Container_RequestContact{RequestContact: Info}
-	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, ID: ownId, PORT: ownPort, Attachment: Data}
+	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, ID: network.nodeID, PORT: network.port, Attachment: Data}
 	marshalled, _ := proto.Marshal(Container)
 	answer, err := network.sendPacket(distantIp, distantPort, marshalled)
 
@@ -201,11 +200,11 @@ func (network *Network) SendFindNode(distantIp string, distantId string, distant
 }
 
 //send finddata request, if err = nil , first returned value is the data , if data == nil get address triple from the second value.
-func (network *Network) SendFindData(distantIp string, distantId string, distantPort string, ownId string, ownPort string, idToLookFor string) ([]byte, []AddressTriple, error) {
+func (network *Network) SendFindData(distantIp string, distantId string, distantPort string, idToLookFor string) ([]byte, []AddressTriple, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_DATA{KEY: idToLookFor}
 	Data := &pb.Container_RequestData{RequestData: Info}
-	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, ID: ownId, Attachment: Data, PORT: ownPort}
+	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
 	marshalled, _ := proto.Marshal(Container)
 	answer, err := network.sendPacket(distantIp, distantPort, marshalled)
 	if err != nil {
