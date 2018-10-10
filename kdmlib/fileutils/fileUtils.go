@@ -2,11 +2,11 @@ package fileUtilsKademlia
 
 import (
 	"fmt"
-	"time"
 	"io/ioutil"
+	"log"
 	"os"
 	"sync"
-	"log"
+	"time"
 )
 
 const fileDirectory = ".files" + string(os.PathSeparator)
@@ -39,10 +39,10 @@ func createFilesDirectory() {
 }
 
 //add or removes files from the node
-func fileHandler(order Order,fileMap FileMap) {
+func fileHandler(order Order, fileMap FileMap) {
 	if order.Action == ADD {
 
-		fileMap.set(order.Name,true)
+		fileMap.set(order.Name, true)
 		//checks if the file is already present
 		if _, err := os.Stat(fileDirectory + order.Name); os.IsNotExist(err) {
 			err := ioutil.WriteFile(fileDirectory+string(os.PathSeparator)+order.Name, order.Content, 0644)
@@ -57,7 +57,7 @@ func fileHandler(order Order,fileMap FileMap) {
 		}
 	} else if order.Action == REMOVE {
 		err := os.Remove(fileDirectory + string(os.PathSeparator) + order.Name)
-		fileMap.set(order.Name,false)
+		fileMap.set(order.Name, false)
 		if err != nil {
 			fmt.Println("something went wrong while removing file " + order.Name)
 		}
@@ -68,19 +68,19 @@ func fileHandler(order Order,fileMap FileMap) {
 func fileHandlerWorker(orders chan Order) {
 	createFilesDirectory()
 	filesMap := populateFileMap()
-	fileMapStruct := FileMap{filesMap,  &sync.Mutex{}}
+	fileMapStruct := FileMap{filesMap, &sync.Mutex{}}
 	for {
-		fileHandler(<-orders,fileMapStruct)
+		fileHandler(<-orders, fileMapStruct)
 	}
 }
 
-func (f FileMap) set (name string,isPresent bool){
+func (f FileMap) set(name string, isPresent bool) {
 	f.lock.Lock()
 	f.mapPresent[name] = isPresent
 	f.lock.Unlock()
 }
 
-func (f FileMap) IsPresent (name string) bool{
+func (f FileMap) IsPresent(name string) bool {
 	f.lock.Lock()
 	isPresent := f.mapPresent[name]
 	f.lock.Unlock()
@@ -154,9 +154,6 @@ func cleaner(pinnedFiles *pinnedFilesStruct) {
 		time.Sleep(time.Hour)
 	}
 }
-
-
-
 
 //reads file from os and returns a byte slice.
 // Can be used to check if a file is present
