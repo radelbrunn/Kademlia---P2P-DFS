@@ -121,7 +121,7 @@ func pinFile(pinnedFiles *pinnedFilesStruct, ordersFromchan Order) {
 
 //reads from the channel and pin or unpin according to the order
 
-func pinner(orders <-chan Order, pinnedFiles *pinnedFilesStruct) {
+func pinner(orders chan Order, pinnedFiles *pinnedFilesStruct) {
 	for ordersFromchan := range orders {
 		pinFile(pinnedFiles, ordersFromchan)
 	}
