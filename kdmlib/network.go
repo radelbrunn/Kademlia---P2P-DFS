@@ -185,16 +185,17 @@ func (network *Network) SendFindNode(toContact AddressTriple, targetID string) (
 	answer, err := network.sendPacket(toContact.Ip, toContact.Port, marshaled)
 	if err != nil {
 		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, toContact, false})
+		return nil, err
 	} else {
 		network.rt.GiveOrder(OrderForRoutingTable{ADD, toContact, false})
+		object := &pb.Container{}
+		proto.Unmarshal(answer, object)
+		result := make([]AddressTriple, len(object.GetReturnContacts().ContactInfo))
+		for i := 0; i < len(object.GetReturnContacts().ContactInfo); i++ {
+			result[i] = AddressTriple{object.GetReturnContacts().ContactInfo[i].IP, object.GetReturnContacts().ContactInfo[i].PORT, object.GetReturnContacts().ContactInfo[i].ID}
+		}
+		return result, err
 	}
-	object := &pb.Container{}
-	proto.Unmarshal(answer, object)
-	result := make([]AddressTriple, len(object.GetReturnContacts().ContactInfo))
-	for i := 0; i < len(object.GetReturnContacts().ContactInfo); i++ {
-		result[i] = AddressTriple{object.GetReturnContacts().ContactInfo[i].IP, object.GetReturnContacts().ContactInfo[i].PORT, object.GetReturnContacts().ContactInfo[i].ID}
-	}
-	return result, err
 }
 
 //send finddata request, if err = nil , first returned value is the data , if data == nil get address triple from the second value.
