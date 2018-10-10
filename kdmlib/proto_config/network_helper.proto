@@ -36,15 +36,17 @@ message Container {
     string REQUEST_TYPE = 1;
     string REQUEST_ID = 2;
     string MSG_ID = 3;
+    string ID = 4;
+
     oneof attachment {
-        REQUEST_PING request_ping = 4;
-        REQUEST_CONTACT request_contact = 5;
-        REQUEST_DATA request_data= 6;
-        REQUEST_STORE request_store= 7;
-        RETURN_PING return_ping = 8;
-        RETURN_CONTACTS return_contacts = 9;
-        RETURN_DATA return_data = 10;
-        RETURN_STORE return_store = 11;
+        REQUEST_PING request_ping = 5;
+        REQUEST_CONTACT request_contact = 6;
+        REQUEST_DATA request_data= 7;
+        REQUEST_STORE request_store= 8;
+        RETURN_PING return_ping = 9;
+        RETURN_CONTACTS return_contacts = 10;
+        RETURN_DATA return_data = 11;
+        RETURN_STORE return_store = 12;
 
     }
 }
