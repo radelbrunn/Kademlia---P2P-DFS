@@ -29,7 +29,7 @@ type Network struct {
 	nodeID      string
 }
 
-func InitializeNetwork(port string, rt RoutingTable, nodeID string, test bool) *Network {
+func InitNetwork(port string, rt RoutingTable, nodeID string, test bool) *Network {
 	network := &Network{}
 	network.rt = rt
 	network.port = port
@@ -159,35 +159,34 @@ func (network *Network) sendPacket(ip string, port string, packet []byte) ([]byt
 }
 
 //send store request
-func (network *Network) SendStore(distantIp string, distantId string, distantPort string, data []byte, dataName string) (string, error) {
+func (network *Network) SendStore(toContact AddressTriple, data []byte, dataName string) (string, error) {
 	fmt.Println("sending store request")
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_STORE{KEY: dataName, VALUE: data}
 	Data := &pb.Container_RequestStore{RequestStore: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
-	marshalled, _ := proto.Marshal(Container)
-	answer, err := network.sendPacket(distantIp, distantPort, marshalled)
+	marshaled, _ := proto.Marshal(Container)
+	answer, err := network.sendPacket(toContact.Ip, toContact.Port, marshaled)
 	if err != nil {
-		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, AddressTriple{Id: distantId, Ip: distantIp, Port: distantPort}, false})
+		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, toContact, false})
 	} else {
-		network.rt.GiveOrder(OrderForRoutingTable{ADD, AddressTriple{Id: distantId, Ip: distantIp, Port: distantPort}, false})
+		network.rt.GiveOrder(OrderForRoutingTable{ADD, toContact, false})
 	}
 	return string(answer), err
 }
 
 //send findnode request, return an address triple slice
-func (network *Network) SendFindNode(distantIp string, distantId string, distantPort string, targetID string) ([]AddressTriple, error) {
+func (network *Network) SendFindNode(toContact AddressTriple, targetID string) ([]AddressTriple, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_CONTACT{ID: targetID}
 	Data := &pb.Container_RequestContact{RequestContact: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, ID: network.nodeID, PORT: network.port, Attachment: Data}
-	marshalled, _ := proto.Marshal(Container)
-	answer, err := network.sendPacket(distantIp, distantPort, marshalled)
-
+	marshaled, _ := proto.Marshal(Container)
+	answer, err := network.sendPacket(toContact.Ip, toContact.Port, marshaled)
 	if err != nil {
-		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, AddressTriple{Id: distantId, Ip: distantIp, Port: distantPort}, false})
+		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, toContact, false})
 	} else {
-		network.rt.GiveOrder(OrderForRoutingTable{ADD, AddressTriple{Id: distantId, Ip: distantIp, Port: distantPort}, false})
+		network.rt.GiveOrder(OrderForRoutingTable{ADD, toContact, false})
 	}
 	object := &pb.Container{}
 	proto.Unmarshal(answer, object)
@@ -195,22 +194,21 @@ func (network *Network) SendFindNode(distantIp string, distantId string, distant
 	for i := 0; i < len(object.GetReturnContacts().ContactInfo); i++ {
 		result[i] = AddressTriple{object.GetReturnContacts().ContactInfo[i].IP, object.GetReturnContacts().ContactInfo[i].PORT, object.GetReturnContacts().ContactInfo[i].ID}
 	}
-
 	return result, err
 }
 
 //send finddata request, if err = nil , first returned value is the data , if data == nil get address triple from the second value.
-func (network *Network) SendFindData(distantIp string, distantId string, distantPort string, targetID string) ([]byte, []AddressTriple, error) {
+func (network *Network) SendFindData(toContact AddressTriple, targetID string) ([]byte, []AddressTriple, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_DATA{KEY: targetID}
 	Data := &pb.Container_RequestData{RequestData: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
-	marshalled, _ := proto.Marshal(Container)
-	answer, err := network.sendPacket(distantIp, distantPort, marshalled)
+	marshaled, _ := proto.Marshal(Container)
+	answer, err := network.sendPacket(toContact.Ip, toContact.Port, marshaled)
 	if err != nil {
-		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, AddressTriple{Id: distantId, Ip: distantIp, Port: distantPort}, false})
+		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, toContact, false})
 	} else {
-		network.rt.GiveOrder(OrderForRoutingTable{ADD, AddressTriple{Id: distantId, Ip: distantIp, Port: distantPort}, false})
+		network.rt.GiveOrder(OrderForRoutingTable{ADD, toContact, false})
 	}
 	object := &pb.Container{}
 	proto.Unmarshal(answer, object)

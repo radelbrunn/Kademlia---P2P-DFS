@@ -26,7 +26,7 @@ func main() {
 	//addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:12000") //<-- try this address when testing!
 	//answerChannel := make(chan interface{})
 
-	nw := kdmlib.InitializeNetwork(5, 12000, routingT, ownId, true)
+	nw := kdmlib.InitNetwork("12000", routingT, ownId, true)
 	kd := kdmlib.NewKademliaInstance(nw, ownId, kdmlib.ALPHA, kdmlib.K, routingT)
 	kd.LookupContact(kdmlib.AddressTriple{"127.0.0.1", "9000", "1001"}.Id, false)
 	//	kd.LookupContact("1001", false)
@@ -39,6 +39,6 @@ func main() {
 func StartKademlia() {
 	nodeId := kdmlib.GenerateRandID(int64(rand.Intn(100)))
 	rt := kdmlib.CreateAllWorkersForRoutingTable(kdmlib.K, kdmlib.IDLENGTH, 5, nodeId)
-	nw := kdmlib.InitializeNetwork(3, 12000, rt, nodeId, false)
+	nw := kdmlib.InitNetwork("12000", rt, nodeId, false)
 	kdmlib.NewKademliaInstance(nw, nodeId, kdmlib.ALPHA, kdmlib.K, rt)
 }
