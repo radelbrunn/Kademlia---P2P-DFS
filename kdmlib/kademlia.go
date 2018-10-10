@@ -50,6 +50,19 @@ type LookupOrder struct {
 	Target     string
 }
 
+func (kademlia *Kademlia) AnswerListener(resultChannel chan interface{}) ([]AddressTriple, string) {
+	for {
+		select {
+		case answer := <-resultChannel:
+			switch answer := answer.(type) {
+			case []AddressTriple:
+				fmt.Println("Answer: ", answer)
+				return answer, ""
+			}
+		}
+	}
+}
+
 func (kademlia *Kademlia) LookupWorker(routineId int, lookupChannel chan LookupOrder, resultChannel chan interface{}) {
 	fmt.Println("Goroutine ", routineId, " started...")
 	for order := range lookupChannel {
@@ -121,28 +134,8 @@ func (kademlia *Kademlia) LookupContact(target string, findData bool) ([]Address
 		kademlia.askedClosest = append(kademlia.askedClosest, kademlia.closest[i])
 	}
 
-	for {
-		select {
-		case answer := <-resultChannel:
-			switch answer := answer.(type) {
+	return kademlia.AnswerListener(resultChannel)
 
-			//In case a slice of contacts is returned:
-			//1. Update the list of closest contacts.
-			//2. Check if there has not been any closer node for past "kademlia.exitThreshold" answers.
-			//3. Continue by asking the next contact.
-			case []AddressTriple:
-				fmt.Println("Answer: ", answer)
-				return answer, ""
-
-				//In case a boolean value is returned (false)
-				//Means the call to a contact has timed out:
-				//Next contact is asked
-			}
-
-			//In case a string is returned:
-			//Return
-		}
-	}
 }
 
 //Ask the next contact, which is fetched from kademlia.GetNextContact()

@@ -2,6 +2,7 @@ package main
 
 import (
 	"Kademlia---P2P-DFS/kdmlib"
+	"fmt"
 	"math/rand"
 )
 
@@ -28,7 +29,10 @@ func main() {
 
 	nw := kdmlib.InitNetwork("12000", routingT, ownId, true)
 	kd := kdmlib.NewKademliaInstance(nw, ownId, kdmlib.ALPHA, kdmlib.K, routingT)
-	kd.LookupContact(kdmlib.AddressTriple{"127.0.0.1", "9000", "1001"}.Id, false)
+	contacts, file := kd.LookupContact(kdmlib.AddressTriple{"127.0.0.1", "9000", "1001"}.Id, false)
+
+	fmt.Println("Contacts: ", contacts)
+	fmt.Println("File: ", file)
 	//	kd.LookupContact("1001", false)
 
 	//nw2 := kdmlib.InitializeNetwork(5, 22000, routingT,nodeId, false)
