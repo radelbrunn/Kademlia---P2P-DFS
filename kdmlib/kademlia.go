@@ -38,13 +38,6 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 	return kademlia
 }
 
-/*
-func testRetContacts(toContact AddressTriple, targetID string) ([]AddressTriple, error) {
-	time.Sleep(time.Second * 1)
-	return []AddressTriple{toContact}, nil
-}
-*/
-
 //A struct for sending Lookup orders
 type LookupOrder struct {
 	LookupType int
@@ -54,16 +47,44 @@ type LookupOrder struct {
 
 //Listener of the answerChannel
 //Returns either a list of Contact or data
-func (kademlia *Kademlia) AnswerListener(resultChannel chan interface{}) ([]AddressTriple, string) {
+func (kademlia *Kademlia) AnswerListener(resultChannel chan interface{}) ([]AddressTriple, []byte) {
 	for {
 		select {
 		case answer := <-resultChannel:
 			switch answer := answer.(type) {
+			//Slice of AddressTriple is written to the channel in following scenarios:
+			//1. Successful LookupContact
+			//2. Successful LookupData, that was not able to locate data
 			case []AddressTriple:
 				fmt.Println("Answer: ", answer)
-				return answer, ""
+				return answer, nil
+			//A slice of bytes is only written to the channel in case the successful LookupData was able to found the file
+			case []byte:
+				fmt.Println("Data: ", answer)
+				return nil, answer
 			}
 		}
+	}
+}
+
+//Performs operations when the slice of contacts comes back from the network
+func (kademlia *Kademlia) HandleContactAnswer(order LookupOrder, answerList []AddressTriple, resultChannel chan interface{}, lookupChannel chan LookupOrder) {
+	if len(answerList) != 0 {
+		//Refresh the list of closest contacts, according to the answer
+		kademlia.refreshClosest(answerList, order.Target)
+
+		//If no closer node has been found in past "kademlia.exitThreshold" calls, write to the answerChannel (i.e. "return")
+		//If not, ask next node from the list of closest
+		if kademlia.noCloserNodeCalls > kademlia.exitThreshold {
+			fmt.Println("Contacts found (no closer contact has been found in a while)")
+			resultChannel <- kademlia.closest
+		} else {
+			kademlia.askNextContact(order.Target, order.LookupType, lookupChannel)
+		}
+	} else {
+		fmt.Println("No contacts returned")
+		kademlia.noCloserNodeCalls++
+		kademlia.askNextContact(order.Target, order.LookupType, lookupChannel)
 	}
 }
 
@@ -73,47 +94,47 @@ func (kademlia *Kademlia) LookupWorker(routineId int, lookupChannel chan LookupO
 
 	//Execute orders from the channel
 	for order := range lookupChannel {
-		if order.LookupType == CONTACT_LOOKUP {
-			fmt.Println("Order: ", order)
 
+		fmt.Println("Order: ", order)
+		switch order.LookupType {
+
+		case CONTACT_LOOKUP:
 			//Send a FIND_NODE RPC to the contact
 			contacts, err := kademlia.network.SendFindNode(order.Contact, order.Target)
-			//contacts, err := testRetContacts(order.Contact, order.Target)
 
 			//Check if an error has occurred (typically the case on-timeout)
 			if err == nil {
-				if len(contacts) != 0 {
-					//Refresh the list of closest contacts, according to the answer
-					kademlia.RefreshClosest(contacts, order.Target)
+				//Handle the operations in a separate function
+				kademlia.HandleContactAnswer(order, contacts, resultChannel, lookupChannel)
+			} else {
+				fmt.Println("TIMEOUT")
+				kademlia.askNextContact(order.Target, order.LookupType, lookupChannel)
+			}
 
-					//If no closer node has been found in past "kademlia.exitThreshold" calls, write to the answerChannel (i.e. "return")
-					//If not, ask next node from the list of closest
-					if kademlia.noCloserNodeCalls > kademlia.exitThreshold {
-						fmt.Println("Contacts found (no closer contact has been found in a while)")
-						resultChannel <- kademlia.closest
-					} else {
-						kademlia.AskNextContact(order.Target, order.LookupType, lookupChannel)
-					}
+		case DATA_LOOKUP:
+			//Send a FIND_DATA RPC to the contact
+			data, contacts, err := kademlia.network.SendFindData(order.Contact, order.Target)
+
+			if err == nil {
+				if data != nil {
+					//If some data is found,  write to the answerChannel (i.e. "return")
+					resultChannel <- data
 				} else {
-					fmt.Println("No contacts returned")
-					kademlia.noCloserNodeCalls++
-					kademlia.AskNextContact(order.Target, order.LookupType, lookupChannel)
+					kademlia.HandleContactAnswer(order, contacts, resultChannel, lookupChannel)
 				}
 			} else {
 				fmt.Println("TIMEOUT")
-				kademlia.AskNextContact(order.Target, order.LookupType, lookupChannel)
+				kademlia.askNextContact(order.Target, order.LookupType, lookupChannel)
 			}
+		}
 
-			//Once the network has returned desired values, the node can be added to the list of nodes, which have returned values/timeout
-			kademlia.gotResultBack = append(kademlia.gotResultBack, order.Contact)
+		//Once the network has returned desired values, the node can be added to the list of nodes, which have responded/timed out
+		kademlia.gotResultBack = append(kademlia.gotResultBack, order.Contact)
 
-			//Check if all nodes have been asked and if all nodes have responded/timed out
-			if kademlia.AskedAllContacts() && len(resultChannel) == 0 && len(kademlia.gotResultBack) == len(kademlia.askedClosest) {
-				fmt.Println("Asked all len:", len(lookupChannel))
-				resultChannel <- kademlia.closest
-			}
-		} else if order.LookupType == DATA_LOOKUP {
-			fmt.Println("DATA_LOOKUP")
+		//Check if all nodes have been asked and if all nodes have responded/timed out
+		if kademlia.askedAllContacts() && len(resultChannel) == 0 && len(kademlia.gotResultBack) == len(kademlia.askedClosest) {
+			fmt.Println("Asked all len:", len(lookupChannel))
+			resultChannel <- kademlia.closest
 		}
 	}
 }
@@ -121,7 +142,7 @@ func (kademlia *Kademlia) LookupWorker(routineId int, lookupChannel chan LookupO
 // Returns up to K closest contacts to the target contact.
 // Uses worker pools for asking nodes
 // Stops if same answer is received multiple times or if all contacts in kademlia.closest have been asked.
-func (kademlia *Kademlia) LookupContact(target string, lookupType int) ([]AddressTriple, string) {
+func (kademlia *Kademlia) LookupContact(target string, lookupType int) ([]AddressTriple, []byte) {
 
 	//Instantiate channels for lookupWorkers and answers
 	lookupChannel := make(chan LookupOrder, kademlia.alpha)
@@ -157,9 +178,49 @@ func (kademlia *Kademlia) LookupContact(target string, lookupType int) ([]Addres
 
 }
 
+func (kademlia *Kademlia) LookupData(fileName string, test bool) (success bool) {
+	fileNameHash := HashKademliaID(fileName)
+
+	//Set test for tests with shorter IDs (for development purposes)
+	if test {
+		fileNameHash = fileName
+	}
+
+	//Check the contents of the return
+	_, data := kademlia.LookupContact(fileNameHash, DATA_LOOKUP)
+	if data != nil {
+		//TODO: implement file handling
+		fmt.Println("File located")
+		return true
+	} else {
+		fmt.Println("File could not be located")
+		return false
+	}
+}
+
+//Stores a file on the network.
+//Uses LookupContact to find closest contacts to hash of fileName.
+func (kademlia *Kademlia) StoreData(fileName string, test bool) {
+	fileNameHash := HashKademliaID(fileName)
+
+	//Set test for tests with shorter IDs (for development purposes)
+	if test {
+		fileNameHash = fileName
+	}
+
+	contacts, _ := kademlia.LookupContact(fileNameHash, CONTACT_LOOKUP)
+	if contacts != nil {
+		for _, contact := range contacts {
+			fmt.Println(contact)
+		}
+	} else {
+		fmt.Println("Contacts are empty. Something went wrong")
+	}
+}
+
 //Ask the next contact, which is fetched from kademlia.GetNextContact()
-func (kademlia *Kademlia) AskNextContact(target string, lookupType int, lookupChannel chan LookupOrder) {
-	nextContact := kademlia.GetNextContact()
+func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupChannel chan LookupOrder) {
+	nextContact := kademlia.getNextContact()
 	if nextContact != nil {
 		fmt.Println("Next ", nextContact)
 		lookupChannel <- LookupOrder{lookupType, *nextContact, target}
@@ -169,7 +230,7 @@ func (kademlia *Kademlia) AskNextContact(target string, lookupType int, lookupCh
 }
 
 // Goes through the list of closest contacts and returns the next node to ask
-func (kademlia *Kademlia) GetNextContact() *AddressTriple {
+func (kademlia *Kademlia) getNextContact() *AddressTriple {
 	for _, e := range kademlia.closest {
 		if !AlreadyAsked(kademlia.askedClosest, e) {
 			kademlia.askedClosest = append(kademlia.askedClosest, e)
@@ -182,7 +243,7 @@ func (kademlia *Kademlia) GetNextContact() *AddressTriple {
 // Refreshes the list of closest contacts
 // All nodes that doesn't already exist in kademlia.closest will be appended and then sorted
 // If no new AddressTriple is added to kademlia.closest and no closer node has been found, "kademlia.noCloserNodeCalls" is incremented
-func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target string) {
+func (kademlia *Kademlia) refreshClosest(newContacts []AddressTriple, target string) {
 	closestSoFar := kademlia.closest[0]
 	elementsAlreadyPresent := true
 
@@ -202,7 +263,7 @@ func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target str
 
 	//Sort only if new elements have been appended
 	if !elementsAlreadyPresent {
-		kademlia.SortContacts(target)
+		kademlia.sortContacts(target)
 	}
 
 	//Check if any closer elements have been found
@@ -214,7 +275,7 @@ func (kademlia *Kademlia) RefreshClosest(newContacts []AddressTriple, target str
 }
 
 //Sorts the list of closest contacts, according to distance to target, slices off the tail if more than K nodes are present
-func (kademlia *Kademlia) SortContacts(target string) {
+func (kademlia *Kademlia) sortContacts(target string) {
 	sortedList := []AddressTriple{}
 
 	//Go through elements one by one
@@ -248,8 +309,8 @@ func (kademlia *Kademlia) SortContacts(target string) {
 }
 
 //Checks if all contacts have been asked
-func (kademlia *Kademlia) AskedAllContacts() bool {
-	contactsAlreadyPresent := true
+func (kademlia *Kademlia) askedAllContacts() (allAsked bool) {
+	allAsked = true
 	for i := range kademlia.closest {
 		elementExists := false
 		for j := range kademlia.askedClosest {
@@ -258,8 +319,18 @@ func (kademlia *Kademlia) AskedAllContacts() bool {
 			}
 		}
 		if !elementExists {
-			contactsAlreadyPresent = false
+			allAsked = false
 		}
 	}
-	return contactsAlreadyPresent
+	return allAsked
 }
+
+/*
+func testRetContacts(toContact AddressTriple, targetID string) ([]AddressTriple, error) {
+	time.Sleep(time.Second * 1)
+	return []AddressTriple{toContact}, nil
+}
+
+
+//contacts, err := testRetContacts(order.Contact, order.Target)
+*/
