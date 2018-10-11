@@ -134,7 +134,8 @@ func pingWorker(in chan OrderForPinger, out chan OrderForRoutingTable, chanLocke
 //}
 
 //read from the channel and updates the routing table accordingly
-func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan OrderForRoutingTable, ownId string, k int, pingerChannel chan OrderForPinger) {
+func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan OrderForRoutingTable,
+	ownId string, k int, pingerChannel chan OrderForPinger) {
 	ordersToSend := list.New()
 	for order := range channel {
 		//fill the pinger channel if it is not full
@@ -181,7 +182,8 @@ func updateRoutingTableWorker(routingTable routingTableAndCache, channel chan Or
 
 }
 
-func sendToPinger(routingTable routingTableAndCache, index int, order OrderForRoutingTable, pingerChannel chan OrderForPinger, ordersToSend *list.List) {
+func sendToPinger(routingTable routingTableAndCache, index int, order OrderForRoutingTable,
+	pingerChannel chan OrderForPinger, ordersToSend *list.List) {
 	var last *list.Element
 	for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
 		if ele.Value != nil {
