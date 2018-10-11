@@ -1,7 +1,6 @@
 package kdmlib
 
 import (
-	"Kademlia---P2P-DFS/kdmlib/fileutils"
 	"fmt"
 )
 
@@ -14,7 +13,6 @@ type Kademlia struct {
 	closest           []AddressTriple
 	askedClosest      []AddressTriple
 	gotResultBack     []AddressTriple
-	fileChannel       chan fileUtilsKademlia.Order
 	nodeId            string
 	rt                RoutingTable
 	network           Network
@@ -46,8 +44,8 @@ type LookupOrder struct {
 }
 
 //Listener of the answerChannel
-//Returns either a list of Contact or data
-func (kademlia *Kademlia) AnswerListener(resultChannel chan interface{}) ([]AddressTriple, []byte) {
+//Returns either a slice of AddressTriples, or data in form of a byte array
+func (kademlia *Kademlia) answerListener(resultChannel chan interface{}) ([]AddressTriple, []byte) {
 	for {
 		select {
 		case answer := <-resultChannel:
@@ -68,7 +66,7 @@ func (kademlia *Kademlia) AnswerListener(resultChannel chan interface{}) ([]Addr
 }
 
 //Performs operations when the slice of contacts comes back from the network
-func (kademlia *Kademlia) HandleContactAnswer(order LookupOrder, answerList []AddressTriple, resultChannel chan interface{}, lookupChannel chan LookupOrder) {
+func (kademlia *Kademlia) handleContactAnswer(order LookupOrder, answerList []AddressTriple, resultChannel chan interface{}, lookupChannel chan LookupOrder) {
 	if len(answerList) != 0 {
 		//Refresh the list of closest contacts, according to the answer
 		kademlia.refreshClosest(answerList, order.Target)
@@ -90,7 +88,7 @@ func (kademlia *Kademlia) HandleContactAnswer(order LookupOrder, answerList []Ad
 
 //User by the Lookup function to perform FIND_NODE and FIND_DATA RPC calls
 func (kademlia *Kademlia) LookupWorker(routineId int, lookupChannel chan LookupOrder, resultChannel chan interface{}) {
-	fmt.Println("Goroutine ", routineId, " started...")
+	fmt.Println("Lookup goroutine ", routineId, " started...")
 
 	//Execute orders from the channel
 	for order := range lookupChannel {
@@ -105,7 +103,7 @@ func (kademlia *Kademlia) LookupWorker(routineId int, lookupChannel chan LookupO
 			//Check if an error has occurred (typically the case on-timeout)
 			if err == nil {
 				//Handle the operations in a separate function
-				kademlia.HandleContactAnswer(order, contacts, resultChannel, lookupChannel)
+				kademlia.handleContactAnswer(order, contacts, resultChannel, lookupChannel)
 			} else {
 				fmt.Println("TIMEOUT")
 				kademlia.askNextContact(order.Target, order.LookupType, lookupChannel)
@@ -120,7 +118,7 @@ func (kademlia *Kademlia) LookupWorker(routineId int, lookupChannel chan LookupO
 					//If some data is found,  write to the answerChannel (i.e. "return")
 					resultChannel <- data
 				} else {
-					kademlia.HandleContactAnswer(order, contacts, resultChannel, lookupChannel)
+					kademlia.handleContactAnswer(order, contacts, resultChannel, lookupChannel)
 				}
 			} else {
 				fmt.Println("TIMEOUT")
@@ -174,7 +172,7 @@ func (kademlia *Kademlia) LookupContact(target string, lookupType int) ([]Addres
 	}
 
 	//Start a listener function, which returns the desired answer
-	return kademlia.AnswerListener(resultChannel)
+	return kademlia.answerListener(resultChannel)
 
 }
 
