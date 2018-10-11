@@ -62,7 +62,7 @@ func (network *Network) UdpServer(numberOfWorkers int, fileChannel chan fileUtil
 	}
 
 	for {
-		buff := make([]byte, 2048)
+		buff := make([]byte, 4096)
 		n, addr, _ := pc.ReadFrom(buff)
 		packetsChan <- udpPacketAndInfo{n: n, address: addr, packet: buff}
 	}
