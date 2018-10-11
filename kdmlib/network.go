@@ -58,7 +58,7 @@ func (network *Network) UdpServer(numberOfWorkers int, fileChannel chan fileUtil
 	}
 
 	for i := 0; i < numberOfWorkers; i++ {
-		go network.ConnectionWorker(packetsChan, pc, network.nodeID, fileChannel)
+		go network.ConnectionWorker(packetsChan, pc, fileChannel)
 	}
 
 	for {
@@ -69,11 +69,11 @@ func (network *Network) UdpServer(numberOfWorkers int, fileChannel chan fileUtil
 }
 
 //reads from the channel and handles the packet
-func (network *Network) ConnectionWorker(packetsChan chan udpPacketAndInfo, conn net.PacketConn, nodeId string, fileChannel chan fileUtilsKademlia.Order) {
+func (network *Network) ConnectionWorker(packetsChan chan udpPacketAndInfo, conn net.PacketConn, fileChannel chan fileUtilsKademlia.Order) {
 	for toto := range packetsChan {
 		container := &pb.Container{}
 		proto.Unmarshal(toto.packet[:toto.n], container)
-		network.requestHandler(container, conn, toto.address, nodeId, fileChannel)
+		network.requestHandler(container, conn, toto.address, network.nodeID, fileChannel)
 	}
 }
 
@@ -139,7 +139,7 @@ func (network *Network) handleFindContact(contactID string, nodeId string) *pb.C
 }
 
 //sends a packet and returns the answers if any, returns error if time out
-func (network *Network) sendPacket(ip string, port string, packet []byte) ([]byte, error) {
+func sendPacket(ip string, port string, packet []byte) ([]byte, error) {
 	conn, err := net.Dial("udp", ip+":"+port)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (network *Network) SendStore(toContact AddressTriple, data []byte, dataName
 	Data := &pb.Container_RequestStore{RequestStore: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
 	marshaled, _ := proto.Marshal(Container)
-	answer, err := network.sendPacket(toContact.Ip, toContact.Port, marshaled)
+	answer, err := sendPacket(toContact.Ip, toContact.Port, marshaled)
 	if err != nil {
 		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, toContact, false})
 	} else {
@@ -182,7 +182,7 @@ func (network *Network) SendFindNode(toContact AddressTriple, targetID string) (
 	Data := &pb.Container_RequestContact{RequestContact: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, ID: network.nodeID, PORT: network.port, Attachment: Data}
 	marshaled, _ := proto.Marshal(Container)
-	answer, err := network.sendPacket(toContact.Ip, toContact.Port, marshaled)
+	answer, err := sendPacket(toContact.Ip, toContact.Port, marshaled)
 	if err != nil {
 		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, toContact, false})
 		return nil, err
@@ -205,7 +205,7 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 	Data := &pb.Container_RequestData{RequestData: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
 	marshaled, _ := proto.Marshal(Container)
-	answer, err := network.sendPacket(toContact.Ip, toContact.Port, marshaled)
+	answer, err := sendPacket(toContact.Ip, toContact.Port, marshaled)
 	if err != nil {
 		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, toContact, false})
 	} else {
