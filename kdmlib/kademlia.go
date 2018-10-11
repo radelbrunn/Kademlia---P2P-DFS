@@ -54,14 +54,14 @@ type LookupOrder struct {
 
 //Listener of the answerChannel
 //Returns either a list of Contact or data
-func (kademlia *Kademlia) AnswerListener(resultChannel chan interface{}) ([]AddressTriple, string) {
+func (kademlia *Kademlia) AnswerListener(resultChannel chan interface{}) ([]AddressTriple, []byte) {
 	for {
 		select {
 		case answer := <-resultChannel:
 			switch answer := answer.(type) {
 			case []AddressTriple:
 				fmt.Println("Answer: ", answer)
-				return answer, ""
+				return answer, nil
 			}
 		}
 	}
@@ -121,7 +121,7 @@ func (kademlia *Kademlia) LookupWorker(routineId int, lookupChannel chan LookupO
 // Returns up to K closest contacts to the target contact.
 // Uses worker pools for asking nodes
 // Stops if same answer is received multiple times or if all contacts in kademlia.closest have been asked.
-func (kademlia *Kademlia) LookupContact(target string, lookupType int) ([]AddressTriple, string) {
+func (kademlia *Kademlia) LookupContact(target string, lookupType int) ([]AddressTriple, []byte) {
 
 	//Instantiate channels for lookupWorkers and answers
 	lookupChannel := make(chan LookupOrder, kademlia.alpha)
@@ -155,6 +155,18 @@ func (kademlia *Kademlia) LookupContact(target string, lookupType int) ([]Addres
 	//Start a listener function, which returns the desired answer
 	return kademlia.AnswerListener(resultChannel)
 
+}
+
+func (kademlia *Kademlia) LookupData(fileName string) (success bool) {
+	_, data := kademlia.LookupContact(HashKademliaID(fileName), DATA_LOOKUP)
+	if data != nil {
+		//TODO: implement file handling
+		fmt.Println("File located")
+		return true
+	} else {
+		fmt.Println("File could not be located")
+		return false
+	}
 }
 
 //Ask the next contact, which is fetched from kademlia.GetNextContact()
@@ -248,8 +260,8 @@ func (kademlia *Kademlia) SortContacts(target string) {
 }
 
 //Checks if all contacts have been asked
-func (kademlia *Kademlia) AskedAllContacts() bool {
-	contactsAlreadyPresent := true
+func (kademlia *Kademlia) AskedAllContacts() (allAsked bool) {
+	allAsked = true
 	for i := range kademlia.closest {
 		elementExists := false
 		for j := range kademlia.askedClosest {
@@ -258,8 +270,8 @@ func (kademlia *Kademlia) AskedAllContacts() bool {
 			}
 		}
 		if !elementExists {
-			contactsAlreadyPresent = false
+			allAsked = false
 		}
 	}
-	return contactsAlreadyPresent
+	return allAsked
 }
