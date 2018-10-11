@@ -60,7 +60,8 @@ func (kademlia *Kademlia) AnswerListener(resultChannel chan interface{}) ([]Addr
 				return answer, nil
 			//A slice of bytes is only written to the channel in case the successful LookupData was able to found the file
 			case []byte:
-				fmt.Println()
+				fmt.Println("Data: ", answer)
+				return nil, answer
 			}
 		}
 	}
@@ -180,7 +181,7 @@ func (kademlia *Kademlia) LookupContact(target string, lookupType int) ([]Addres
 func (kademlia *Kademlia) LookupData(fileName string, test bool) (success bool) {
 	fileNameHash := HashKademliaID(fileName)
 
-	//Set test for tests with smaller IDs (for development purposes)
+	//Set test for tests with shorter IDs (for development purposes)
 	if test {
 		fileNameHash = fileName
 	}
@@ -194,6 +195,26 @@ func (kademlia *Kademlia) LookupData(fileName string, test bool) (success bool) 
 	} else {
 		fmt.Println("File could not be located")
 		return false
+	}
+}
+
+//Stores a file on the network.
+//Uses LookupContact to find closest contacts to hash of fileName.
+func (kademlia *Kademlia) StoreData(fileName string, test bool) {
+	fileNameHash := HashKademliaID(fileName)
+
+	//Set test for tests with shorter IDs (for development purposes)
+	if test {
+		fileNameHash = fileName
+	}
+
+	contacts, _ := kademlia.LookupContact(fileNameHash, CONTACT_LOOKUP)
+	if contacts != nil {
+		for _, contact := range contacts {
+			fmt.Println(contact)
+		}
+	} else {
+		fmt.Println("Contacts are empty. Something went wrong")
 	}
 }
 

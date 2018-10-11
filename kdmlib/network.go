@@ -159,10 +159,10 @@ func sendPacket(ip string, port string, packet []byte) ([]byte, error) {
 }
 
 //send store request
-func (network *Network) SendStore(toContact AddressTriple, data []byte, dataName string) (string, error) {
+func (network *Network) SendStore(toContact AddressTriple, data []byte, fileName string) (string, error) {
 	fmt.Println("sending store request")
 	msgID := GenerateRandID(int64(rand.Intn(100)))
-	Info := &pb.REQUEST_STORE{KEY: dataName, VALUE: data}
+	Info := &pb.REQUEST_STORE{KEY: fileName, VALUE: data}
 	Data := &pb.Container_RequestStore{RequestStore: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
 	marshaled, _ := proto.Marshal(Container)
