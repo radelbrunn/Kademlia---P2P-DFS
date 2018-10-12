@@ -46,7 +46,7 @@ type LookupOrder struct {
 
 //Listener of the answerChannel
 //Returns either a slice of AddressTriples, or data in form of a byte array
-func (kademlia *Kademlia) answerListener(resultChannel chan interface{}) ([]AddressTriple, []byte) {
+func (kademlia *Kademlia) lookupListener(resultChannel chan interface{}) ([]AddressTriple, []byte) {
 	for {
 		select {
 		case answer := <-resultChannel:
@@ -88,7 +88,7 @@ func (kademlia *Kademlia) handleContactAnswer(order LookupOrder, answerList []Ad
 }
 
 //User by the Lookup function to perform FIND_NODE and FIND_DATA RPC calls
-func (kademlia *Kademlia) LookupWorker(routineId int, lookupChannel chan LookupOrder, resultChannel chan interface{}) {
+func (kademlia *Kademlia) lookupWorker(routineId int, lookupChannel chan LookupOrder, resultChannel chan interface{}) {
 	fmt.Println("Lookup goroutine ", routineId, " started...")
 
 	//Execute orders from the channel
@@ -167,9 +167,9 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 		return nil, nil
 	}
 
-	//Start at most Alpha Lookup goroutines
+	//Start at most Alpha lookup workers
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
-		go kademlia.LookupWorker(i, lookupChannel, resultChannel)
+		go kademlia.lookupWorker(i, lookupChannel, resultChannel)
 	}
 
 	//Loop through the closest contacts from the routing table and pass an order to the lookup channel
@@ -181,7 +181,7 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 	}
 
 	//Start a listener function, which returns the desired answer
-	return kademlia.answerListener(resultChannel)
+	return kademlia.lookupListener(resultChannel)
 
 }
 
@@ -209,6 +209,51 @@ func (kademlia *Kademlia) LookupData(fileName string, test bool) (success bool) 
 	}
 }
 
+//A struct for sending Store orders
+type StoreOrder struct {
+	Contact  AddressTriple
+	Data     []byte
+	FileName string
+}
+
+func (kademlia *Kademlia) storeWorker(routineId int, storeChannel chan StoreOrder, resultChannel chan bool) {
+	fmt.Println("Lookup goroutine ", routineId, " started...")
+
+	//Execute orders from the channel
+	for order := range storeChannel {
+
+		fmt.Println("Order: ", order)
+		answer, err := kademlia.network.SendStore(order.Contact, order.Data, order.FileName)
+
+		if err == nil && answer == "stored" {
+			resultChannel <- true
+		} else {
+			resultChannel <- false
+		}
+	}
+}
+
+//Listener of the answerChannel
+//Returns either a slice of AddressTriples, or data in form of a byte array
+func (kademlia *Kademlia) storeListener(resultChannel chan bool, expectedNumAnswers int) {
+	answersReturned := 0
+	for {
+		select {
+		case answer := <-resultChannel:
+			answersReturned++
+			if answer == true {
+				fmt.Println("SendStore was successful")
+			} else {
+				fmt.Println("SendStore failed")
+			}
+			//Return when all answers are received
+			if answersReturned == expectedNumAnswers {
+				return
+			}
+		}
+	}
+}
+
 //Stores a file on the network.
 //Uses LookupContact to find closest contacts to hash of fileName.
 func (kademlia *Kademlia) StoreData(fileName string, test bool) {
@@ -227,13 +272,27 @@ func (kademlia *Kademlia) StoreData(fileName string, test bool) {
 	if file != nil {
 		contacts, _ := kademlia.LookupAlgorithm(fileNameHash, ContactLookup)
 		if contacts != nil {
-			for _, contact := range contacts {
-				kademlia.network.SendStore(contact, file, fileName)
-				fmt.Println(contact)
+
+			//Instantiate channels for lookupWorkers and answers
+			storeChannel := make(chan StoreOrder, kademlia.k)
+			resultChannel := make(chan bool, kademlia.k)
+
+			//Start at most Alpha store workers
+			for i := 0; i < kademlia.alpha && i < len(contacts); i++ {
+				go kademlia.storeWorker(i, storeChannel, resultChannel)
 			}
+
+			//Loop through the list of closest and send orders to the store channel
+			for _, contact := range contacts {
+				storeChannel <- StoreOrder{contact, file, fileName}
+			}
+
+			kademlia.storeListener(resultChannel, len(contacts))
+
 		} else {
 			fmt.Println("Contacts are empty. Something went wrong")
 		}
+
 	} else {
 		fmt.Println("File does not exist locally (nothing to store)")
 	}
