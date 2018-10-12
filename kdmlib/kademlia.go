@@ -167,6 +167,7 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 	//Check if the list of closest is empty
 	//If true, return nil
 	if len(kademlia.closest) == 0 {
+		fmt.Println("The routing table is empty. No contacts to ask.")
 		return nil, nil
 	}
 

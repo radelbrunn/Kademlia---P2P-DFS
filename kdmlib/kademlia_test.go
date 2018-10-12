@@ -1,6 +1,7 @@
 package kdmlib
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -154,7 +155,6 @@ func TestKademlia_GetNextContact_AskedAllContacts(t *testing.T) {
 
 func TestKademlia_LookupContactTimeout(t *testing.T) {
 	nodeId := "11100000"
-
 	targetContact := AddressTriple{"127.0.0.17", "11000", "11111111"}
 
 	testContacts := []AddressTriple{
@@ -171,9 +171,9 @@ func TestKademlia_LookupContactTimeout(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	nw := InitNetwork("12000", rt, nodeId, true)
-	kd := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
 
-	contacts, file := kd.LookupAlgorithm(targetContact.Id, ContactLookup)
+	contacts, file := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
 
 	if file != nil {
 		t.Error("Did not expect a data return")
@@ -182,12 +182,17 @@ func TestKademlia_LookupContactTimeout(t *testing.T) {
 
 	if len(contacts) != len(testContacts) {
 		t.Error("Did not expect addition of more contacts (as all requests timedOut")
+		t.Fail()
+	}
+
+	if len(testKademlia.rt.FindKClosest(targetContact.Id)) != 0 && len(rt.FindKClosest(targetContact.Id)) != 0 {
+		t.Error("Routing tables are inconsistent")
+		t.Fail()
 	}
 }
 
 func TestKademlia_LookupDataTimeout(t *testing.T) {
 	nodeId := "11100000"
-
 	targetData := "11111111"
 
 	testContacts := []AddressTriple{
@@ -204,12 +209,35 @@ func TestKademlia_LookupDataTimeout(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	nw := InitNetwork("12000", rt, nodeId, true)
-	kd := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
 
-	dataReturned := kd.LookupData(targetData, true)
+	dataReturned := testKademlia.LookupData(targetData, true)
 
 	if dataReturned == true {
 		t.Error("Did not expect a data return")
 		t.Fail()
+	}
+
+	if len(testKademlia.rt.FindKClosest(targetData)) != 0 && len(rt.FindKClosest(targetData)) != 0 {
+		t.Error("Routing tables are inconsistent")
+		t.Fail()
+	}
+}
+
+func TestKademlia_LookupEmptyRT(t *testing.T) {
+	nodeId := "11100000"
+	targetContact := AddressTriple{"127.0.0.17", "11000", "11111111"}
+
+	rt := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId)
+
+	time.Sleep(time.Second * 2)
+
+	nw := InitNetwork("12000", rt, nodeId, true)
+	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+
+	contacts, file := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
+
+	if contacts != nil || file != nil {
+		fmt.Println("Expected nil returns, as the routing table was initially empty")
 	}
 }
