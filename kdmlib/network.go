@@ -27,17 +27,19 @@ type Network struct {
 	port        string
 	serverConn  *net.UDPConn
 	nodeID      string
+	ip          string
 }
 
-func InitNetwork(port string, rt RoutingTable, nodeID string, test bool) *Network {
+func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bool) *Network {
 	network := &Network{}
 	network.rt = rt
 	network.port = port
+	network.ip = ip
 	network.nodeID = nodeID
-	network.fileChannel = make(chan fileUtilsKademlia.Order)
+	network.fileChannel = make(chan fileUtilsKademlia.Order, 100)
 
 	if !test {
-		network.UdpServer(3, network.fileChannel)
+		go network.UdpServer(3, network.fileChannel)
 	}
 
 	return network
@@ -51,7 +53,7 @@ type udpPacketAndInfo struct {
 
 //launch the udp server on port "port", with the specified amount of workers. needs the routing table and file channel
 func (network *Network) UdpServer(numberOfWorkers int, fileChannel chan fileUtilsKademlia.Order) {
-	pc, err := net.ListenPacket("udp", ":"+network.port)
+	pc, err := net.ListenPacket("udp", network.ip+":"+network.port)
 	packetsChan := make(chan udpPacketAndInfo, 500)
 	if err != nil {
 		log.Fatal(err)
