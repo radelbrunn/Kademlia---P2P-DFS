@@ -2,6 +2,7 @@ package kdmlib
 
 import (
 	"testing"
+	"time"
 )
 
 func TestKademlia_SortContacts(t *testing.T) {
@@ -16,14 +17,14 @@ func TestKademlia_SortContacts(t *testing.T) {
 		{"0", "00", "10010000"}, {"0", "00", "00000001"},
 		{"0", "00", "00000011"}, {"0", "00", "00000100"},
 		{"0", "00", "01100000"}, {"0", "00", "11110000"},
-		{"0", "00", "11110000"}, {"0", "00", "11110000"},
-		{"0", "00", "11110000"}, {"0", "00", "11110001"},
+		{"0", "00", "11010000"}, {"0", "00", "11111101"},
+		{"0", "00", "01110000"}, {"0", "00", "11110001"},
 		{"0", "00", "11110010"}, {"0", "00", "11110011"},
 		{"0", "00", "11110100"}, {"0", "00", "11110101"},
 		{"0", "00", "11110110"}, {"0", "00", "11110111"},
 		{"0", "00", "11111000"}, {"0", "00", "11111001"},
 		{"0", "00", "11111010"}, {"0", "00", "11111011"},
-		{"0", "00", "11111100"}, {"0", "00", "11111101"}}
+		{"0", "00", "11111100"}, {"0", "00", "10110000"}}
 
 	for _, e := range testContacts {
 		testKademlia.closest = append(testKademlia.closest, e)
@@ -33,89 +34,182 @@ func TestKademlia_SortContacts(t *testing.T) {
 
 	if testKademlia.closest[0].Id != "11111101" || testKademlia.closest[len(testKademlia.closest)-1].Id != "00000100" {
 		t.Error("Sorting is all wrong")
+		t.Fail()
 	}
 
 	if len(testKademlia.closest) > testKademlia.k {
 		t.Error("List of closest is too long (expected at most ", testKademlia.k)
+		t.Fail()
 	}
 
 	if len(testContacts) > 20 {
 		if len(testKademlia.closest) != 20 {
 			t.Error("List of closest does not have", testKademlia.k, " elements")
+			t.Fail()
 		}
 	}
 }
 
 func TestKademlia_RefreshClosest(t *testing.T) {
-	nodeId := "1110"
+	nodeId := "11100000"
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 	nw := InitNetwork("12000", rt, nodeId, true)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
 
-	target := "1111"
+	target := "11111111"
 
-	t1 := AddressTriple{"t1", "00", "1001"}
-	t2 := AddressTriple{"t2", "00", "0100"}
-	t3 := AddressTriple{"t3", "00", "0010"}
-	t4 := AddressTriple{"t4", "00", "1000"}
-	t5 := AddressTriple{"t5", "00", "0110"}
-	t6 := AddressTriple{"t6", "00", "1111"}
-	t7 := AddressTriple{"t7", "00", "0001"}
-	t8 := AddressTriple{"t8", "00", "0011"}
-	t9 := AddressTriple{"t9", "00", "1011"}
+	testContacts := []AddressTriple{
+		{"0", "00", "10010000"}, {"0", "00", "00000001"},
+		{"0", "00", "00000011"}, {"0", "00", "00000100"},
+		{"0", "00", "01100000"}, {"0", "00", "11110000"},
+		{"0", "00", "11010000"}, {"0", "00", "11111101"},
+		{"0", "00", "01110000"}, {"0", "00", "11110001"},
+		{"0", "00", "11110010"}, {"0", "00", "11110011"},
+		{"0", "00", "11110100"}, {"0", "00", "11110101"},
+		{"0", "00", "11110110"}, {"0", "00", "11110111"},
+		{"0", "00", "11111000"}, {"0", "00", "11111001"},
+		{"0", "00", "11111010"}, {"0", "00", "11111011"},
+		{"0", "00", "11111100"}, {"0", "00", "10110000"}}
 
-	testKademlia.closest = append(testKademlia.closest, t1, t2, t3, t4, t5, t6)
+	for _, e := range testContacts[0:6] {
+		testKademlia.closest = append(testKademlia.closest, e)
+	}
+
 	testKademlia.sortContacts(target)
 	intermediate := testKademlia.closest
 
-	newContacts := []AddressTriple{t1, t2, t3, t4, t5, t6}
+	newContacts := testContacts[0:6]
 	testKademlia.refreshClosest(newContacts, target)
 
 	if len(testKademlia.closest) != len(intermediate) {
 		t.Error("Expected same length")
+		t.Fail()
 	}
 
 	for index := range testKademlia.closest {
 		if testKademlia.closest[index].Id != intermediate[index].Id {
 			t.Error("Difference in slices")
+			t.Fail()
 		}
 	}
 
-	newContacts = []AddressTriple{t7, t8, t9}
+	newContacts = testContacts[6:9]
 	testKademlia.refreshClosest(newContacts, target)
 
 	if len(testKademlia.closest) != 9 {
 		t.Error("Expected length 9, got", len(testKademlia.closest))
+		t.Fail()
 	}
 }
 
-func TestKademlia_GetNextContact(t *testing.T) {
-	nodeId := "1110"
+func TestKademlia_GetNextContact_AskedAllContacts(t *testing.T) {
+	nodeId := "11100000"
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 	nw := InitNetwork("12000", rt, nodeId, true)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
 
-	t1 := AddressTriple{"t1", "00", "1001"}
-	t2 := AddressTriple{"t2", "00", "0100"}
+	t1 := AddressTriple{"t1", "00", "10010000"}
+	t2 := AddressTriple{"t2", "00", "01000000"}
 
 	testKademlia.closest = append(testKademlia.closest, t1)
 	testKademlia.askedClosest = append(testKademlia.askedClosest, t1)
 
 	nextNode := testKademlia.getNextContact()
+	askedAll := testKademlia.askedAllContacts()
+
 	if nextNode != nil {
 		t.Error("Expected nil, got ", nextNode)
+		t.Fail()
+	}
+	if askedAll == false {
+		t.Error("Asked all returns false, despite having asked all contacts so far")
+		t.Fail()
 	}
 
 	testKademlia.closest = append(testKademlia.closest, t2)
-
 	nextNode = testKademlia.getNextContact()
+
+	askedAll = testKademlia.askedAllContacts()
+
 	if nextNode.Id != t2.Id {
 		t.Error("Expected", t2, " got ", nextNode)
+	}
+	if askedAll == true {
+		t.Error("Asked all returned true, despite not having asked all contacts so far")
 	}
 
 	testKademlia.askedClosest = append(testKademlia.askedClosest, t2)
 	nextNode = testKademlia.getNextContact()
+	askedAll = testKademlia.askedAllContacts()
+
 	if nextNode != nil {
 		t.Error("Expected nil, got ", nextNode)
+		t.Fail()
+	}
+	if askedAll == false {
+		t.Error("Asked all returns false, despite having asked all contacts so far")
+		t.Fail()
+	}
+}
+
+func TestKademlia_LookupContactTimeout(t *testing.T) {
+	nodeId := "11100000"
+
+	targetContact := AddressTriple{"127.0.0.17", "11000", "11111111"}
+
+	testContacts := []AddressTriple{
+		{"127.0.0.11", "11100", "00010000"}, {"127.0.0.12", "11100", "00100000"},
+		{"127.0.0.13", "11100", "01000000"}, {"127.0.0.14", "11100", "10000000"},
+		{"127.0.0.15", "11100", "00110000"}, {"127.0.0.16", "11100", "11110000"}}
+
+	rt := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId)
+
+	for _, e := range testContacts {
+		rt.GiveOrder(OrderForRoutingTable{ADD, e, false})
+	}
+
+	time.Sleep(time.Second * 2)
+
+	nw := InitNetwork("12000", rt, nodeId, true)
+	kd := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+
+	contacts, file := kd.LookupAlgorithm(targetContact.Id, ContactLookup)
+
+	if file != nil {
+		t.Error("Did not expect a data return")
+		t.Fail()
+	}
+
+	if len(contacts) != len(testContacts) {
+		t.Error("Did not expect addition of more contacts (as all requests timedOut")
+	}
+}
+
+func TestKademlia_LookupDataTimeout(t *testing.T) {
+	nodeId := "11100000"
+
+	targetData := "11111111"
+
+	testContacts := []AddressTriple{
+		{"127.0.0.11", "11100", "00010000"}, {"127.0.0.12", "11100", "00100000"},
+		{"127.0.0.13", "11100", "01000000"}, {"127.0.0.14", "11100", "10000000"},
+		{"127.0.0.15", "11100", "00110000"}, {"127.0.0.16", "11100", "11110000"}}
+
+	rt := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId)
+
+	for _, e := range testContacts {
+		rt.GiveOrder(OrderForRoutingTable{ADD, e, false})
+	}
+
+	time.Sleep(time.Second * 2)
+
+	nw := InitNetwork("12000", rt, nodeId, true)
+	kd := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+
+	dataReturned := kd.LookupData(targetData, true)
+
+	if dataReturned == true {
+		t.Error("Did not expect a data return")
+		t.Fail()
 	}
 }

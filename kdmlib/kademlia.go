@@ -304,6 +304,7 @@ func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupCh
 	nextContact := kademlia.getNextContact()
 	if nextContact != nil {
 		fmt.Println("Next ", nextContact)
+		kademlia.askedClosest = append(kademlia.askedClosest, *nextContact)
 		lookupChannel <- LookupOrder{lookupType, *nextContact, target}
 	} else {
 		fmt.Println("No more to ask")
@@ -314,7 +315,6 @@ func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupCh
 func (kademlia *Kademlia) getNextContact() *AddressTriple {
 	for _, e := range kademlia.closest {
 		if !AlreadyAsked(kademlia.askedClosest, e) {
-			kademlia.askedClosest = append(kademlia.askedClosest, e)
 			return &e
 		}
 	}
