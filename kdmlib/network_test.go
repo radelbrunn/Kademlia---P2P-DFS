@@ -1,16 +1,6 @@
 package kdmlib
 
-import (
-	"Kademlia---P2P-DFS/github.com/golang/protobuf/proto"
-	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
-	"bytes"
-	"fmt"
-	"math/rand"
-	"net"
-	"reflect"
-	"testing"
-)
-
+/*
 func TestNetwork_SendPing(t *testing.T) {
 	myID := "qwerty"
 	nodeId := GenerateRandID(int64(rand.Intn(100)))
@@ -337,8 +327,8 @@ func TestContactReturned(t *testing.T) {
 	}
 }
 
-/*  NEED to check for a real file in order to pass!!!!!!!
-	Maybe two unit tests for this? one for file exist and one for return contacts!
+NEED to check for a real file in order to pass!!!!!!!
+Maybe two unit tests for this? one for file exist and one for return contacts!
 
 
 func TestDataReturned(t *testing.T) {
