@@ -3,6 +3,7 @@ package kdmlib
 import (
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
 	"fmt"
+	"sync"
 )
 
 const (
@@ -21,6 +22,7 @@ type Kademlia struct {
 	k                 int
 	noCloserNodeCalls int
 	exitThreshold     int
+	lock              sync.Mutex
 }
 
 // Initializes a Kademlia struct
@@ -98,6 +100,7 @@ func (kademlia *Kademlia) lookupWorker(routineId int, lookupChannel chan LookupO
 		switch order.LookupType {
 
 		case ContactLookup:
+
 			//Send a FIND_NODE RPC to the contact
 			contacts, err := kademlia.network.SendFindNode(order.Contact, order.Target)
 
@@ -301,6 +304,7 @@ func (kademlia *Kademlia) StoreData(fileName string, test bool) {
 
 //Ask the next contact, which is fetched from kademlia.GetNextContact()
 func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupChannel chan LookupOrder) {
+	kademlia.lock.Lock()
 	nextContact := kademlia.getNextContact()
 	if nextContact != nil {
 		fmt.Println("Next ", nextContact)
@@ -309,6 +313,8 @@ func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupCh
 	} else {
 		fmt.Println("No more to ask")
 	}
+	kademlia.lock.Unlock()
+
 }
 
 // Goes through the list of closest contacts and returns the next node to ask
