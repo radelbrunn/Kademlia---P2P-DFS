@@ -71,6 +71,7 @@ func (kademlia *Kademlia) lookupListener(resultChannel chan interface{}) ([]Addr
 //Performs operations when the slice of contacts comes back from the network
 func (kademlia *Kademlia) handleContactAnswer(order LookupOrder, answerList []AddressTriple, resultChannel chan interface{}, lookupChannel chan LookupOrder) {
 	if len(answerList) != 0 {
+		fmt.Println("Got some contacts back: ", answerList)
 		//Refresh the list of closest contacts, according to the answer
 		kademlia.refreshClosest(answerList, order.Target)
 
