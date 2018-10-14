@@ -173,7 +173,7 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 	}
 
 	//Start at most Alpha lookup workers
-	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
+	for i := 0; i < kademlia.alpha; i++ {
 		go kademlia.lookupWorker(i, lookupChannel, resultChannel)
 	}
 
@@ -183,6 +183,10 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 		lookupChannel <- LookupOrder{lookupType, kademlia.closest[i], target}
 		//Mark node as "asked" by appending it to the list of asked nodes
 		kademlia.askedClosest = append(kademlia.askedClosest, kademlia.closest[i])
+	}
+
+	for i := 0; i < kademlia.alpha-len(kademlia.closest); i++ {
+		lookupChannel <- LookupOrder{lookupType, AddressTriple{"0", "00", "00000000"}, target}
 	}
 
 	//Start a listener function, which returns the desired answer
