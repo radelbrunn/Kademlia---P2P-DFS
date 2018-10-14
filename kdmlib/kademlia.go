@@ -135,7 +135,7 @@ func (kademlia *Kademlia) lookupWorker(routineId int, lookupChannel chan LookupO
 		kademlia.gotResultBack = append(kademlia.gotResultBack, order.Contact)
 
 		//Check if all nodes have been asked and if all nodes have responded/timed out
-		if kademlia.askedAllContacts() && len(resultChannel) == 0 && len(kademlia.gotResultBack) == len(kademlia.askedClosest) {
+		if kademlia.askedAllContacts() && len(resultChannel) == 0 {
 			fmt.Println("Asked all len:", len(lookupChannel))
 			resultChannel <- kademlia.closest
 		}
@@ -408,13 +408,19 @@ func (kademlia *Kademlia) sortContacts(target string) {
 func (kademlia *Kademlia) askedAllContacts() (allAsked bool) {
 	allAsked = true
 	for i := range kademlia.closest {
-		elementExists := false
+		elementAsked := false
+		elementResponded := false
 		for j := range kademlia.askedClosest {
 			if kademlia.closest[i].Id == kademlia.askedClosest[j].Id {
-				elementExists = true
+				elementAsked = true
 			}
 		}
-		if !elementExists {
+		for j := range kademlia.gotResultBack {
+			if kademlia.closest[i].Id == kademlia.gotResultBack[j].Id {
+				elementResponded = true
+			}
+		}
+		if !elementAsked || !elementResponded {
 			allAsked = false
 		}
 	}
