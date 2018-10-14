@@ -209,9 +209,11 @@ func bumpElement(routingTable routingTableAndCache, index int, order OrderForRou
 
 func removeFromRoutingTable(routingTable routingTableAndCache, index int, order OrderForRoutingTable) {
 	for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
-		if ele.Value.(AddressTriple).Id == order.Target.Id {
-			(*(routingTable.routingTable))[index].Remove(ele)
-			break
+		if ele.Value != nil {
+			if ele.Value.(AddressTriple).Id == order.Target.Id {
+				(*(routingTable.routingTable))[index].Remove(ele)
+				break
+			}
 		}
 	}
 

@@ -333,6 +333,7 @@ func (kademlia *Kademlia) getNextContact() *AddressTriple {
 // All nodes that doesn't already exist in kademlia.closest will be appended and then sorted
 // If no new AddressTriple is added to kademlia.closest and no closer node has been found, "kademlia.noCloserNodeCalls" is incremented
 func (kademlia *Kademlia) refreshClosest(newContacts []AddressTriple, target string) {
+	kademlia.lock.Lock()
 	closestSoFar := kademlia.closest[0]
 	elementsAlreadyPresent := true
 
@@ -361,6 +362,8 @@ func (kademlia *Kademlia) refreshClosest(newContacts []AddressTriple, target str
 	} else {
 		kademlia.noCloserNodeCalls++
 	}
+
+	kademlia.lock.Unlock()
 }
 
 //Sorts the list of closest contacts, according to distance to target, slices off the tail if more than K nodes are present
