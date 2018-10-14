@@ -61,7 +61,7 @@ func (kademlia *Kademlia) lookupListener(resultChannel chan interface{}) ([]Addr
 				return answer, nil
 				//A slice of bytes is only written to the channel in case the successful LookupData was able to found the file
 			case []byte:
-				fmt.Println("Data: ", answer)
+				fmt.Println("Data: ", string(answer))
 				return nil, answer
 			}
 		}
@@ -231,7 +231,7 @@ func (kademlia *Kademlia) storeWorker(routineId int, storeChannel chan StoreOrde
 	//Execute orders from the channel
 	for order := range storeChannel {
 
-		fmt.Println("Order: ", order)
+		fmt.Println("Order: [", order.Contact, " ", string(order.Data), " ", order.FileName, "]")
 		answer, err := kademlia.network.SendStore(order.Contact, order.Data, order.FileName)
 
 		if err == nil && answer == "stored" {
@@ -251,7 +251,7 @@ func (kademlia *Kademlia) storeListener(resultChannel chan bool, expectedNumAnsw
 		case answer := <-resultChannel:
 			answersReturned++
 			if answer == true {
-				fmt.Println("SendStore was successful")
+				fmt.Println("SendStore succeeded")
 			} else {
 				fmt.Println("SendStore failed")
 			}
@@ -270,7 +270,7 @@ func (kademlia *Kademlia) StoreData(fileName string, test bool) {
 
 	//Set test for tests with shorter IDs (for development purposes)
 	if test {
-		fileNameHash = fileName
+		fileNameHash = "11111111"
 	}
 
 	//Read the file locally

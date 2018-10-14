@@ -22,12 +22,13 @@ const (
 )
 
 type Network struct {
-	fileChannel chan fileUtilsKademlia.Order
-	rt          RoutingTable
-	port        string
-	serverConn  *net.UDPConn
-	nodeID      string
-	ip          string
+	fileChannel   chan fileUtilsKademlia.Order
+	pinnerChannel chan fileUtilsKademlia.Order
+	rt            RoutingTable
+	port          string
+	serverConn    *net.UDPConn
+	nodeID        string
+	ip            string
 }
 
 func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bool) *Network {
@@ -36,7 +37,7 @@ func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bo
 	network.port = port
 	network.ip = ip
 	network.nodeID = nodeID
-	network.fileChannel = make(chan fileUtilsKademlia.Order, 100)
+	network.pinnerChannel, network.fileChannel = fileUtilsKademlia.CreateAndLaunchFileWorkers()
 
 	if !test {
 		go network.UdpServer(3, network.fileChannel)
@@ -101,7 +102,8 @@ func (network *Network) requestHandler(container *pb.Container, conn net.PacketC
 			fmt.Println("something went wrong")
 		}
 	case Store:
-		network.handleStore(container.GetRequestStore().KEY, container.GetRequestStore().VALUE, fileChannel)
+		network.handleStore(network.nodeID+container.GetRequestStore().KEY, container.GetRequestStore().VALUE, fileChannel)
+		fmt.Println("STORE SUCCEEDED: ", network.nodeID)
 		conn.WriteTo([]byte("stored"), addr)
 	}
 	network.rt.GiveOrder(OrderForRoutingTable{Action: ADD, Target: AddressTriple{Ip: strings.Split(addr.String(), ":")[0], Id: container.ID, Port: container.PORT}, FromPinger: false})
@@ -162,7 +164,6 @@ func sendPacket(ip string, port string, packet []byte) ([]byte, error) {
 
 //send store request
 func (network *Network) SendStore(toContact AddressTriple, data []byte, fileName string) (string, error) {
-	fmt.Println("sending store request")
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_STORE{KEY: fileName, VALUE: data}
 	Data := &pb.Container_RequestStore{RequestStore: Info}
