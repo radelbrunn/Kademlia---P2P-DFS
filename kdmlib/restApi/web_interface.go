@@ -1,13 +1,13 @@
 package restApi
 
 import (
-	"net/http"
-	"github.com/gorilla/mux"
 	filesUtils "Kademlia---P2P-DFS/kdmlib/fileutils"
-	"log"
-	"strconv"
-	"io/ioutil"
 	"crypto/sha1"
+	"github.com/gorilla/mux"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"strconv"
 )
 
 type RestDependencies struct {
@@ -50,12 +50,12 @@ func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.
 
 	//TODO send request to k closest nodes
 
-	dependencies.FileChannel <- filesUtils.Order{ filesUtils.ADD,stringHash , b}
+	dependencies.FileChannel <- filesUtils.Order{filesUtils.ADD, stringHash, b}
 
-	if err!=nil{
+	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("server error"))
-	}else{
+	} else {
 		w.WriteHeader(200)
 		w.Write([]byte(stringHash))
 	}
