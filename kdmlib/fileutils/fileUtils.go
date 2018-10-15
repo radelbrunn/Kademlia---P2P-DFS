@@ -12,12 +12,12 @@ import (
 const fileDirectory = ".files" + string(os.PathSeparator)
 
 type pinnedFilesStruct struct {
-	pinnedFiles map[string]bool
+	PinnedFiles map[string]bool
 	lock        *sync.Mutex
 }
 
 type FileMap struct {
-	mapPresent map[string]bool
+	MapPresent map[string]bool
 	lock       *sync.Mutex
 }
 
@@ -74,13 +74,13 @@ func fileHandlerWorker(orders chan Order, fileMap FileMap) {
 
 func (f FileMap) set(name string, isPresent bool) {
 	f.lock.Lock()
-	f.mapPresent[name] = isPresent
+	f.MapPresent[name] = isPresent
 	f.lock.Unlock()
 }
 
 func (f FileMap) IsPresent(name string) bool {
 	f.lock.Lock()
-	isPresent := f.mapPresent[name]
+	isPresent := f.MapPresent[name]
 	f.lock.Unlock()
 	return isPresent
 }
@@ -106,12 +106,12 @@ func populateFileMap() map[string]bool {
 func pinFile(pinnedFiles *pinnedFilesStruct, ordersFromchan Order) {
 	pinnedFiles.lock.Lock()
 	if ordersFromchan.Action == ADD {
-		if !checkIfInList(pinnedFiles.pinnedFiles, ordersFromchan.Name) {
-			pinnedFiles.pinnedFiles[ordersFromchan.Name] = true
+		if !checkIfInList(pinnedFiles.PinnedFiles, ordersFromchan.Name) {
+			pinnedFiles.PinnedFiles[ordersFromchan.Name] = true
 		}
 	} else if ordersFromchan.Action == REMOVE {
-		if checkIfInList(pinnedFiles.pinnedFiles, ordersFromchan.Name) {
-			pinnedFiles.pinnedFiles[ordersFromchan.Name] = false
+		if checkIfInList(pinnedFiles.PinnedFiles, ordersFromchan.Name) {
+			pinnedFiles.PinnedFiles[ordersFromchan.Name] = false
 		}
 	}
 	pinnedFiles.lock.Unlock()
@@ -135,7 +135,7 @@ func removeOldFiles(pinnedFiles *pinnedFilesStruct) {
 	for _, f := range files {
 		if f.ModTime().Before(time.Now().Add(-time.Hour * 25)) {
 			pinnedFiles.lock.Lock()
-			if !f.IsDir() && !checkIfInList(pinnedFiles.pinnedFiles, f.Name()) {
+			if !f.IsDir() && !checkIfInList(pinnedFiles.PinnedFiles, f.Name()) {
 				fmt.Println(f.Name(), " : file too old, thus removing it")
 				os.Remove(fileDirectory + f.Name())
 			}
