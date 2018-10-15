@@ -8,28 +8,31 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"Kademlia---P2P-DFS/kdmlib"
 )
 
 type RestDependencies struct {
 	Map         filesUtils.FileMap
 	FileChannel chan filesUtils.Order
 	Pinning     chan filesUtils.Order
+	kdm 		kdmlib.Kademlia
 }
 
 // main function
-func LaunchRestAPI(fileMap filesUtils.FileMap, fileChannel chan filesUtils.Order, pinningChannel chan filesUtils.Order) {
+func LaunchRestAPI(fileMap filesUtils.FileMap, fileChannel chan filesUtils.Order, pinningChannel chan filesUtils.Order,kdm kdmlib.Kademlia) {
 	router := mux.NewRouter()
-	dependencies := RestDependencies{fileMap, fileChannel, pinningChannel}
+	dependencies := RestDependencies{fileMap, fileChannel, pinningChannel,kdm}
 	router.HandleFunc("/{name}", dependencies.getFile).Methods("GET")
 	router.HandleFunc("/", dependencies.receiveFile).Methods("POST")
 	router.HandleFunc("/pin/{name}", dependencies.pin).Methods("PUT")
-	router.HandleFunc("/unpin/{name", dependencies.unpin).Methods("PUT")
+	router.HandleFunc("/unpin/{name}", dependencies.unpin).Methods("PUT")
 
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
 
 func (dependencies RestDependencies) getFile(w http.ResponseWriter, r *http.Request) {
-	if dependencies.Map.IsPresent(mux.Vars(r)["name"]) {
+	args := mux.Vars(r)["name"]
+	if dependencies.Map.IsPresent(args) {
 		w.WriteHeader(200)
 		w.Header().Set("Content-Disposition", "attachment; filename="+mux.Vars(r)["name"])
 		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
@@ -38,8 +41,13 @@ func (dependencies RestDependencies) getFile(w http.ResponseWriter, r *http.Requ
 		w.Write(value)
 	} else {
 
-		//TODO try to get the file from another node , send back 404 if not found, 200 and file if found
-
+		if result := dependencies.kdm.LookupData(args,false);result!=nil{
+			w.WriteHeader(200)
+			w.Write(result)
+		}else{
+			w.WriteHeader(404)
+			w.Write([]byte("File not found"))
+		}
 	}
 }
 
