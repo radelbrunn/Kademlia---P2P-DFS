@@ -199,7 +199,7 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 }
 
 //Uses LookupAlgorithm to get the data with a filename
-func (kademlia *Kademlia) LookupData(fileName string, test bool) (success bool) {
+func (kademlia *Kademlia) LookupData(fileName string, test bool) []byte {
 	fileNameHash := HashKademliaID(fileName)
 
 	//Set test for tests with shorter IDs (for development purposes)
@@ -213,10 +213,10 @@ func (kademlia *Kademlia) LookupData(fileName string, test bool) (success bool) 
 	if data != nil {
 		kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 		fmt.Println("File located and downloaded")
-		return true
+		return data
 	} else {
 		fmt.Println("File could not be located")
-		return false
+		return nil
 	}
 }
 
