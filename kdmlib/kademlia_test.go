@@ -2,13 +2,13 @@ package kdmlib
 
 import (
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 )
 
+/*
 func TestKademlia_SortContacts(t *testing.T) {
 	nodeId := "11100000"
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
@@ -245,6 +245,8 @@ func TestKademlia_LookupEmptyRT(t *testing.T) {
 	}
 }
 
+*/
+
 func TestKademlia_LookupAlgorithm(t *testing.T) {
 	nodeId1 := "10010000"
 	port1 := "12000"
@@ -289,8 +291,8 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 
 	time.Sleep(time.Second * 1)
 
-	InitNetwork(port1, "127.0.0.1", rt1, nodeId1, false)
-	InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false)
+	nw1 := InitNetwork(port1, "127.0.0.1", rt1, nodeId1, false)
+	nw3 := InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false)
 	nw2 := InitNetwork(port2, "127.0.0.1", rt2, nodeId2, true)
 
 	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2)
@@ -315,6 +317,12 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 		t.Error("Did not expect a data return")
 		t.Fail()
 	}
+
+	time.Sleep(time.Second * 2)
+
+	nw1.KillUdpServer()
+	nw2.KillUdpServer()
+	nw3.KillUdpServer()
 }
 
 func TestKademlia_StoreData(t *testing.T) {
@@ -375,9 +383,9 @@ func TestKademlia_StoreData(t *testing.T) {
 
 	time.Sleep(time.Second * 1)
 
-	InitNetwork(port1, "127.0.0.1", rt1, nodeId1, false)
-	InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false)
-	InitNetwork(port4, "127.0.0.1", rt4, nodeId4, false)
+	nw1 := InitNetwork(port1, "127.0.0.1", rt1, nodeId1, false)
+	nw3 := InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false)
+	nw4 := InitNetwork(port4, "127.0.0.1", rt4, nodeId4, false)
 	nw2 := InitNetwork(port2, "127.0.0.1", rt2, nodeId2, true)
 
 	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2)
@@ -405,7 +413,13 @@ func TestKademlia_StoreData(t *testing.T) {
 	}
 
 	os.Remove(".files" + string(os.PathSeparator) + "kdmtestfile")
-	os.Remove(".files")
+
+	time.Sleep(time.Second * 2)
+
+	nw1.KillUdpServer()
+	nw2.KillUdpServer()
+	nw3.KillUdpServer()
+	nw4.KillUdpServer()
 }
 
 /* Check Windows compatibility
