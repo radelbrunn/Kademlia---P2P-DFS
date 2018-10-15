@@ -176,6 +176,7 @@ func updateFile(name string) {
 // 1st value is the channel for the pinner and the second one
 // is the channel for the fileHandler
 func CreateAndLaunchFileWorkers() (chan Order, chan Order,FileMap) {
+	createFilesDirectory()
 	channelForPinner := make(chan Order, 1000)
 	channelForFileHandler := make(chan Order, 1000)
 	pinnedFiles := createPinnedFileList()
