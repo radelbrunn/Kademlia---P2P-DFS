@@ -34,15 +34,17 @@ type Network struct {
 	conn          net.PacketConn
 }
 
-func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bool) *Network {
+func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bool, fileChannel chan fileUtilsKademlia.Order, pinnerChannel chan fileUtilsKademlia.Order, fileMap fileUtilsKademlia.FileMap) *Network {
 	network := &Network{}
 	network.rt = rt
 	network.port = port
 	network.ip = ip
 	network.nodeID = nodeID
-	network.pinnerChannel, network.fileChannel, network.fileMap = fileUtilsKademlia.CreateAndLaunchFileWorkers()
 
-	network.pinnerChannel, network.fileChannel, _ = fileUtilsKademlia.CreateAndLaunchFileWorkers()
+	network.fileChannel = fileChannel
+	network.pinnerChannel = pinnerChannel
+	network.fileMap = fileMap
+
 	network.packetsChan = make(chan udpPacketAndInfo, 500)
 
 	//Set test flag to true for testing puposes
@@ -232,7 +234,7 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 		for i := 0; i < len(object.GetReturnContacts().ContactInfo); i++ {
 			result[i] = AddressTriple{object.GetReturnContacts().ContactInfo[i].IP, object.GetReturnContacts().ContactInfo[i].PORT, object.GetReturnContacts().ContactInfo[i].ID}
 		}
-		return answer, result, err
+		return nil, result, err
 	}
 	return answer, nil, err
 }

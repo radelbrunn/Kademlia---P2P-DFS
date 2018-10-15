@@ -4,6 +4,7 @@ import (
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
 	"fmt"
 	"sync"
+	"time"
 )
 
 const (
@@ -23,11 +24,12 @@ type Kademlia struct {
 	noCloserNodeCalls int
 	exitThreshold     int
 	lock              sync.Mutex
+	fileMap           fileUtilsKademlia.FileMap
 	fileChannel       chan fileUtilsKademlia.Order
 }
 
 // Initializes a Kademlia struct
-func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt RoutingTable) *Kademlia {
+func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt RoutingTable, fileChannel chan fileUtilsKademlia.Order, fileMap fileUtilsKademlia.FileMap) *Kademlia {
 	kademlia := &Kademlia{}
 	kademlia.network = *nw
 	kademlia.nodeId = nodeId
@@ -36,8 +38,10 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 	kademlia.k = k
 	kademlia.noCloserNodeCalls = 0
 	kademlia.exitThreshold = 3
+	kademlia.fileChannel = fileChannel
+	kademlia.fileMap = fileMap
 
-	_, kademlia.fileChannel, _ = fileUtilsKademlia.CreateAndLaunchFileWorkers()
+	go kademlia.RepublishData(30)
 
 	return kademlia
 }
@@ -148,7 +152,7 @@ func (kademlia *Kademlia) lookupWorker(routineId int, lookupWorkerChannel chan L
 // LookupAlgorithm initialization function
 // Uses worker pools when sending queries to nodes
 // Stops if same answer is received multiple times or if all contacts in "kademlia.closest" have been asked.
-// Return a slice of AddressTriples and a bytearray with the file contents.
+// Returns a slice of AddressTriples and a bytearray with the file contents.
 // Supports two lookupTypes: ContactLookup and DataLookup
 func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]AddressTriple, []byte) {
 
@@ -198,7 +202,7 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 }
 
 //Uses LookupAlgorithm to get the data with a filename
-func (kademlia *Kademlia) LookupData(fileName string, test bool) (success bool) {
+func (kademlia *Kademlia) LookupData(fileName string, test bool) []byte {
 	fileNameHash := HashKademliaID(fileName)
 
 	//Set test for tests with shorter IDs (for development purposes)
@@ -212,10 +216,10 @@ func (kademlia *Kademlia) LookupData(fileName string, test bool) (success bool) 
 	if data != nil {
 		kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 		fmt.Println("File located and downloaded")
-		return true
+		return data
 	} else {
 		fmt.Println("File could not be located")
-		return false
+		return nil
 	}
 }
 
@@ -264,7 +268,7 @@ func (kademlia *Kademlia) storeListener(resultChannel chan bool, expectedNumAnsw
 	}
 }
 
-//Stores a file on the network.
+//Finds K closest contacts and stores the file.
 //Uses LookupContact to find closest contacts to hash of fileName.
 func (kademlia *Kademlia) StoreData(fileName string, test bool) {
 	fileNameHash := HashKademliaID(fileName)
@@ -426,4 +430,18 @@ func (kademlia *Kademlia) askedAllContacts() (allAsked bool) {
 		}
 	}
 	return allAsked
+}
+
+// RepublishData republish all data the node is responsible for to make sure data is replicated in the network.
+func (kademlia *Kademlia) RepublishData(republishSleepTime int) {
+	//Sleep the thread 'republishSleepTime' seconds
+	time.Sleep(time.Second * time.Duration(republishSleepTime))
+
+	dataMap := kademlia.network.fileMap.MapPresent
+	for fileName := range dataMap {
+		if dataMap[fileName] == true {
+			kademlia.StoreData(fileName, true)
+		}
+	}
+	kademlia.RepublishData(republishSleepTime)
 }

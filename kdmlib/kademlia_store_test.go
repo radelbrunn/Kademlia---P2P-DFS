@@ -66,12 +66,17 @@ func TestKademlia_StoreData(t *testing.T) {
 
 	time.Sleep(time.Second * 1)
 
-	InitNetwork(port1, "127.0.0.1", rt1, nodeId1, false)
-	InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false)
-	InitNetwork(port4, "127.0.0.1", rt4, nodeId4, false)
-	nw2 := InitNetwork(port2, "127.0.0.1", rt2, nodeId2, true)
+	chanPin1, chanFile1, fileMap1 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
+	chanPin2, chanFile2, fileMap2 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
+	chanPin3, chanFile3, fileMap3 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
+	chanPin4, chanFile4, fileMap4 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 
-	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2)
+	InitNetwork(port1, "127.0.0.1", rt1, nodeId1, false, chanFile1, chanPin1, fileMap1)
+	InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false, chanFile3, chanPin3, fileMap3)
+	InitNetwork(port4, "127.0.0.1", rt4, nodeId4, false, chanFile4, chanPin4, fileMap4)
+	nw2 := InitNetwork(port2, "127.0.0.1", rt2, nodeId2, true, chanFile2, chanPin2, fileMap2)
+
+	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
 	testKademlia.StoreData(fileName, true)
 

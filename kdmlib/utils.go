@@ -22,7 +22,6 @@ const (
 //Generates a Random ID, of specified length, given by constant IDLENGTH
 //The returned ID is a bitwise representation
 func GenerateRandID(seed int64) string {
-
 	id := ""
 	rand.Seed(time.Now().UnixNano() - seed)
 	for i := 0; i < IDLENGTH; i++ {
@@ -114,7 +113,6 @@ func GenerateIDFromHex(hexAddr string) string {
 func HashKademliaID(fileName string) string {
 	f := hex.EncodeToString([]byte(fileName))
 	if len(f) > 38 {
-		fmt.Println(f)
 		fmt.Println("Name of file can be maximum 19 characters, including file extension.")
 	}
 	f = f + "03"
