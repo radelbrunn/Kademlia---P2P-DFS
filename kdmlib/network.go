@@ -31,7 +31,6 @@ type Network struct {
 	nodeID        string
 	ip            string
 	conn          net.PacketConn
-	buffer        []byte
 }
 
 func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bool) *Network {
@@ -42,19 +41,17 @@ func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bo
 	network.nodeID = nodeID
 
 	network.pinnerChannel, network.fileChannel = fileUtilsKademlia.CreateAndLaunchFileWorkers()
-
-	conn, err := net.ListenPacket("udp", network.ip+":"+network.port)
-	network.conn = conn
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	network.buffer = make([]byte, 4096)
-
 	network.packetsChan = make(chan udpPacketAndInfo, 500)
 
+	//Set test flag to true for testing puposes
 	if !test {
-		go network.UdpServer(ALPHA)
+		buffer := make([]byte, 4096)
+		conn, err := net.ListenPacket("udp", network.ip+":"+network.port)
+		network.conn = conn
+		if err != nil {
+			log.Fatal(err)
+		}
+		go network.UdpServer(ALPHA, buffer)
 	}
 
 	return network
@@ -67,29 +64,18 @@ type udpPacketAndInfo struct {
 }
 
 //launch the udp server on port "port", with the specified amount of workers. needs the routing table and file channel
-func (network *Network) UdpServer(numberOfWorkers int) {
+func (network *Network) UdpServer(numberOfWorkers int, buffer []byte) {
 
 	for i := 0; i < numberOfWorkers; i++ {
 		go network.ConnectionWorker()
 	}
 
-	for network.buffer != nil {
-		if network.conn != nil || network.buffer != nil {
-			fmt.Println(network.conn)
+	defer network.conn.Close()
 
-			if network.buffer != nil {
-				n, addr, _ := network.conn.ReadFrom(network.buffer)
-				network.packetsChan <- udpPacketAndInfo{n: n, address: addr, packet: network.buffer}
-			}
-		}
+	for {
+		n, addr, _ := network.conn.ReadFrom(buffer)
+		network.packetsChan <- udpPacketAndInfo{n: n, address: addr, packet: buffer}
 	}
-}
-
-//kills the listening process and closes the connection (used mainly for testing)
-func (network *Network) KillUdpServer() {
-	network.conn.Close()
-	network.conn = nil
-	network.buffer = nil
 }
 
 //reads from the channel and handles the packet
