@@ -129,7 +129,6 @@ func (network *Network) handleStore(name string, value []byte) {
 
 //check if data is present and returns it if it is. Returns a list of contacts if not present
 func (network *Network) handleFindData(DataID string) *pb.Container {
-	fmt.Println(DataID)
 	if fileUtilsKademlia.ReadFileFromOS(DataID) != nil {
 		Value := fileUtilsKademlia.ReadFileFromOS(DataID)
 		Info := &pb.RETURN_DATA{VALUE: Value}

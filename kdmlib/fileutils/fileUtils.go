@@ -65,7 +65,7 @@ func fileHandler(order Order, fileMap FileMap) {
 }
 
 // create the fileDirectory directory and populates it according to incoming orders
-func fileHandlerWorker(orders chan Order,fileMap FileMap) {
+func fileHandlerWorker(orders chan Order, fileMap FileMap) {
 	createFilesDirectory()
 	for {
 		fileHandler(<-orders, fileMap)
@@ -175,16 +175,16 @@ func updateFile(name string) {
 // and returns the channels to communicate with the workers
 // 1st value is the channel for the pinner and the second one
 // is the channel for the fileHandler
-func CreateAndLaunchFileWorkers() (chan Order, chan Order,FileMap) {
+func CreateAndLaunchFileWorkers() (chan Order, chan Order, FileMap) {
 	createFilesDirectory()
 	channelForPinner := make(chan Order, 1000)
 	channelForFileHandler := make(chan Order, 1000)
 	pinnedFiles := createPinnedFileList()
-	fileMap := FileMap{populateFileMap(),&sync.Mutex{}}
+	fileMap := FileMap{populateFileMap(), &sync.Mutex{}}
 
 	go cleaner(pinnedFiles)
 	go pinner(channelForPinner, pinnedFiles)
-	go fileHandlerWorker(channelForFileHandler,fileMap)
+	go fileHandlerWorker(channelForFileHandler, fileMap)
 
-	return channelForPinner, channelForFileHandler , fileMap
+	return channelForPinner, channelForFileHandler, fileMap
 }

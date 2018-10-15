@@ -149,7 +149,7 @@ func (kademlia *Kademlia) lookupWorker(routineId int, lookupWorkerChannel chan L
 // LookupAlgorithm initialization function
 // Uses worker pools when sending queries to nodes
 // Stops if same answer is received multiple times or if all contacts in "kademlia.closest" have been asked.
-// Return a slice of AddressTriples and a bytearray with the file contents.
+// Returns a slice of AddressTriples and a bytearray with the file contents.
 // Supports two lookupTypes: ContactLookup and DataLookup
 func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]AddressTriple, []byte) {
 
