@@ -23,6 +23,7 @@ type Kademlia struct {
 	noCloserNodeCalls int
 	exitThreshold     int
 	lock              sync.Mutex
+	fileChannel       chan fileUtilsKademlia.Order
 }
 
 // Initializes a Kademlia struct
@@ -35,6 +36,8 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 	kademlia.k = k
 	kademlia.noCloserNodeCalls = 0
 	kademlia.exitThreshold = 3
+
+	_, kademlia.fileChannel, _ = fileUtilsKademlia.CreateAndLaunchFileWorkers()
 
 	return kademlia
 }
@@ -69,7 +72,7 @@ func (kademlia *Kademlia) lookupListener(resultChannel chan interface{}) ([]Addr
 }
 
 //Performs operations when the slice of contacts comes back from the network
-func (kademlia *Kademlia) handleContactAnswer(order LookupOrder, answerList []AddressTriple, resultChannel chan interface{}, lookupChannel chan LookupOrder) {
+func (kademlia *Kademlia) handleContactAnswer(order LookupOrder, answerList []AddressTriple, resultChannel chan interface{}, lookupWorkerChannel chan LookupOrder) {
 	if len(answerList) != 0 {
 		fmt.Println("Got some contacts back: ", answerList)
 		//Refresh the list of closest contacts, according to the answer
@@ -81,21 +84,21 @@ func (kademlia *Kademlia) handleContactAnswer(order LookupOrder, answerList []Ad
 			fmt.Println("Contacts found (no closer contact has been found in a while)")
 			resultChannel <- kademlia.closest
 		} else {
-			kademlia.askNextContact(order.Target, order.LookupType, lookupChannel)
+			kademlia.askNextContact(order.Target, order.LookupType, lookupWorkerChannel)
 		}
 	} else {
 		fmt.Println("No contacts returned")
 		kademlia.noCloserNodeCalls++
-		kademlia.askNextContact(order.Target, order.LookupType, lookupChannel)
+		kademlia.askNextContact(order.Target, order.LookupType, lookupWorkerChannel)
 	}
 }
 
 //User by the Lookup function to perform FIND_NODE and FIND_DATA RPC calls
-func (kademlia *Kademlia) lookupWorker(routineId int, lookupChannel chan LookupOrder, resultChannel chan interface{}) {
+func (kademlia *Kademlia) lookupWorker(routineId int, lookupWorkerChannel chan LookupOrder, resultChannel chan interface{}) {
 	fmt.Println("Lookup goroutine ", routineId, " started...")
 
 	//Execute orders from the channel
-	for order := range lookupChannel {
+	for order := range lookupWorkerChannel {
 
 		fmt.Println("Order: ", order)
 		switch order.LookupType {
@@ -108,10 +111,10 @@ func (kademlia *Kademlia) lookupWorker(routineId int, lookupChannel chan LookupO
 			//Check if an error has occurred (typically the case on-timeout)
 			if err == nil {
 				//Handle the operations in a separate function
-				kademlia.handleContactAnswer(order, contacts, resultChannel, lookupChannel)
+				kademlia.handleContactAnswer(order, contacts, resultChannel, lookupWorkerChannel)
 			} else {
 				fmt.Println("TIMEOUT")
-				kademlia.askNextContact(order.Target, order.LookupType, lookupChannel)
+				kademlia.askNextContact(order.Target, order.LookupType, lookupWorkerChannel)
 			}
 
 		case DataLookup:
@@ -123,11 +126,11 @@ func (kademlia *Kademlia) lookupWorker(routineId int, lookupChannel chan LookupO
 					//If some data is found,  write to the answerChannel (i.e. "return")
 					resultChannel <- data
 				} else {
-					kademlia.handleContactAnswer(order, contacts, resultChannel, lookupChannel)
+					kademlia.handleContactAnswer(order, contacts, resultChannel, lookupWorkerChannel)
 				}
 			} else {
 				fmt.Println("TIMEOUT")
-				kademlia.askNextContact(order.Target, order.LookupType, lookupChannel)
+				kademlia.askNextContact(order.Target, order.LookupType, lookupWorkerChannel)
 			}
 		}
 
@@ -136,7 +139,7 @@ func (kademlia *Kademlia) lookupWorker(routineId int, lookupChannel chan LookupO
 
 		//Check if all nodes have been asked and if all nodes have responded/timed out
 		if kademlia.askedAllContacts() && len(resultChannel) == 0 {
-			fmt.Println("Asked all len:", len(lookupChannel))
+			fmt.Println("Asked ALL!")
 			resultChannel <- kademlia.closest
 		}
 	}
@@ -150,7 +153,7 @@ func (kademlia *Kademlia) lookupWorker(routineId int, lookupChannel chan LookupO
 func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]AddressTriple, []byte) {
 
 	//Instantiate channels for lookupWorkers and answers
-	lookupChannel := make(chan LookupOrder, kademlia.alpha)
+	lookupWorkerChannel := make(chan LookupOrder, kademlia.alpha)
 	resultChannel := make(chan interface{}, kademlia.k)
 
 	//Instantiate lists of contacts
@@ -174,19 +177,19 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 
 	//Start at most Alpha lookup workers
 	for i := 0; i < kademlia.alpha; i++ {
-		go kademlia.lookupWorker(i, lookupChannel, resultChannel)
+		go kademlia.lookupWorker(i, lookupWorkerChannel, resultChannel)
 	}
 
 	//Loop through the closest contacts from the routing table and pass an order to the lookup channel
 	for i := 0; i < kademlia.alpha && i < len(kademlia.closest); i++ {
 		//Send an order to channel
-		lookupChannel <- LookupOrder{lookupType, kademlia.closest[i], target}
+		lookupWorkerChannel <- LookupOrder{lookupType, kademlia.closest[i], target}
 		//Mark node as "asked" by appending it to the list of asked nodes
 		kademlia.askedClosest = append(kademlia.askedClosest, kademlia.closest[i])
 	}
 
 	for i := 0; i < kademlia.alpha-len(kademlia.closest); i++ {
-		lookupChannel <- LookupOrder{lookupType, AddressTriple{"0", "00", "00000000"}, target}
+		lookupWorkerChannel <- LookupOrder{lookupType, AddressTriple{"0", "00", "00000000"}, target}
 	}
 
 	//Start a listener function, which returns the desired answer
@@ -207,9 +210,7 @@ func (kademlia *Kademlia) LookupData(fileName string, test bool) (success bool) 
 	//If data is returned, then Store file locally
 	_, data := kademlia.LookupAlgorithm(fileNameHash, DataLookup)
 	if data != nil {
-		fileChannel := make(chan fileUtilsKademlia.Order, 1)
-		fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
-		close(fileChannel)
+		kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 		fmt.Println("File located and downloaded")
 		return true
 	} else {
@@ -225,11 +226,11 @@ type StoreOrder struct {
 	FileName string
 }
 
-func (kademlia *Kademlia) storeWorker(routineId int, storeChannel chan StoreOrder, resultChannel chan bool) {
+func (kademlia *Kademlia) storeWorker(routineId int, storeWorkerChannel chan StoreOrder, resultChannel chan bool) {
 	fmt.Println("Lookup goroutine ", routineId, " started...")
 
 	//Execute orders from the channel
-	for order := range storeChannel {
+	for order := range storeWorkerChannel {
 
 		fmt.Println("Order: [", order.Contact, " ", string(order.Data), " ", order.FileName, "]")
 		answer, err := kademlia.network.SendStore(order.Contact, order.Data, order.FileName)
@@ -283,17 +284,17 @@ func (kademlia *Kademlia) StoreData(fileName string, test bool) {
 		if contacts != nil {
 
 			//Instantiate channels for lookupWorkers and answers
-			storeChannel := make(chan StoreOrder, kademlia.k)
+			storeWorkerChannel := make(chan StoreOrder, kademlia.k)
 			resultChannel := make(chan bool, kademlia.k)
 
 			//Start at most Alpha store workers
 			for i := 0; i < kademlia.alpha && i < len(contacts); i++ {
-				go kademlia.storeWorker(i, storeChannel, resultChannel)
+				go kademlia.storeWorker(i, storeWorkerChannel, resultChannel)
 			}
 
 			//Loop through the list of closest and send orders to the store channel
 			for _, contact := range contacts {
-				storeChannel <- StoreOrder{contact, file, fileName}
+				storeWorkerChannel <- StoreOrder{contact, file, fileName}
 			}
 
 			kademlia.storeListener(resultChannel, len(contacts))
@@ -309,13 +310,13 @@ func (kademlia *Kademlia) StoreData(fileName string, test bool) {
 }
 
 //Ask the next contact, which is fetched from kademlia.GetNextContact()
-func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupChannel chan LookupOrder) {
+func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupWorkerChannel chan LookupOrder) {
 	kademlia.lock.Lock()
 	nextContact := kademlia.getNextContact()
 	if nextContact != nil {
 		fmt.Println("Next ", nextContact)
 		kademlia.askedClosest = append(kademlia.askedClosest, *nextContact)
-		lookupChannel <- LookupOrder{lookupType, *nextContact, target}
+		lookupWorkerChannel <- LookupOrder{lookupType, *nextContact, target}
 	} else {
 		fmt.Println("No more to ask")
 	}

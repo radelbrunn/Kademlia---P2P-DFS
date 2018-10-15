@@ -40,7 +40,7 @@ func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bo
 	network.ip = ip
 	network.nodeID = nodeID
 
-	network.pinnerChannel, network.fileChannel = fileUtilsKademlia.CreateAndLaunchFileWorkers()
+	network.pinnerChannel, network.fileChannel, _ = fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	network.packetsChan = make(chan udpPacketAndInfo, 500)
 
 	//Set test flag to true for testing puposes
