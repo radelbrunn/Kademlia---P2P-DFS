@@ -43,7 +43,7 @@ func (dependencies RestDependencies) getFile(w http.ResponseWriter, r *http.Requ
 
 		if result := dependencies.kdm.LookupData(args,false);result!=nil{
 			w.WriteHeader(200)
-			w.Write(result)
+			w.Write([]byte("true"))
 		}else{
 			w.WriteHeader(404)
 			w.Write([]byte("File not found"))
