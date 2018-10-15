@@ -129,6 +129,7 @@ func (network *Network) handleStore(name string, value []byte) {
 
 //check if data is present and returns it if it is. Returns a list of contacts if not present
 func (network *Network) handleFindData(DataID string) *pb.Container {
+	fmt.Println(DataID)
 	if fileUtilsKademlia.ReadFileFromOS(DataID) != nil {
 		Value := fileUtilsKademlia.ReadFileFromOS(DataID)
 		Info := &pb.RETURN_DATA{VALUE: Value}
@@ -234,7 +235,7 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 		for i := 0; i < len(object.GetReturnContacts().ContactInfo); i++ {
 			result[i] = AddressTriple{object.GetReturnContacts().ContactInfo[i].IP, object.GetReturnContacts().ContactInfo[i].PORT, object.GetReturnContacts().ContactInfo[i].ID}
 		}
-		return answer, result, err
+		return nil, result, err
 	}
 	return answer, nil, err
 }

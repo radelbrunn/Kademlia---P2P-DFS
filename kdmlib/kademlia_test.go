@@ -220,7 +220,7 @@ func TestKademlia_LookupDataTimeout(t *testing.T) {
 
 	dataReturned := testKademlia.LookupData(targetData, true)
 
-	if dataReturned == true {
+	if dataReturned != nil {
 		t.Error("Did not expect a data return")
 		t.Fail()
 	}
