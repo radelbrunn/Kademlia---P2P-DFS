@@ -12,7 +12,7 @@ func TestKademlia_SortContacts(t *testing.T) {
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, chanFile, chanPin, fileMap)
-	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
 
 	target := "11111111"
 
@@ -58,7 +58,7 @@ func TestKademlia_RefreshClosest(t *testing.T) {
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, chanFile, chanPin, fileMap)
-	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
 
 	target := "11111111"
 
@@ -111,7 +111,7 @@ func TestKademlia_GetNextContact_AskedAllContacts(t *testing.T) {
 	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, chanFile, chanPin, fileMap)
-	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
 
 	t1 := AddressTriple{"t1", "00", "10010000"}
 	t2 := AddressTriple{"t2", "00", "01000000"}
@@ -177,7 +177,7 @@ func TestKademlia_LookupContactTimeout(t *testing.T) {
 
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, chanFile, chanPin, fileMap)
-	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
 
 	contacts, file := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
 
@@ -216,7 +216,7 @@ func TestKademlia_LookupDataTimeout(t *testing.T) {
 
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, chanFile, chanPin, fileMap)
-	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
 
 	dataReturned := testKademlia.LookupData(targetData, true)
 
@@ -241,7 +241,7 @@ func TestKademlia_LookupEmptyRT(t *testing.T) {
 
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, chanFile, chanPin, fileMap)
-	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt)
+	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
 
 	contacts, file := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
 

@@ -58,7 +58,7 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 	InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false, chanFile3, chanPin3, fileMap3)
 	nw2 := InitNetwork(port2, "127.0.0.1", rt2, nodeId2, true, chanFile2, chanPin2, fileMap2)
 
-	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2)
+	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
 	contacts, data := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
 

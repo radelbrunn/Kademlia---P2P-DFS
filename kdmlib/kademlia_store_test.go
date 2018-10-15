@@ -76,7 +76,7 @@ func TestKademlia_StoreData(t *testing.T) {
 	InitNetwork(port4, "127.0.0.1", rt4, nodeId4, false, chanFile4, chanPin4, fileMap4)
 	nw2 := InitNetwork(port2, "127.0.0.1", rt2, nodeId2, true, chanFile2, chanPin2, fileMap2)
 
-	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2)
+	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
 	testKademlia.StoreData(fileName, true)
 

@@ -23,11 +23,12 @@ type Kademlia struct {
 	noCloserNodeCalls int
 	exitThreshold     int
 	lock              sync.Mutex
+	fileMap           fileUtilsKademlia.FileMap
 	fileChannel       chan fileUtilsKademlia.Order
 }
 
 // Initializes a Kademlia struct
-func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt RoutingTable) *Kademlia {
+func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt RoutingTable, fileChannel chan fileUtilsKademlia.Order, fileMap fileUtilsKademlia.FileMap) *Kademlia {
 	kademlia := &Kademlia{}
 	kademlia.network = *nw
 	kademlia.nodeId = nodeId
@@ -36,8 +37,8 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 	kademlia.k = k
 	kademlia.noCloserNodeCalls = 0
 	kademlia.exitThreshold = 3
-
-	_, kademlia.fileChannel, _ = fileUtilsKademlia.CreateAndLaunchFileWorkers()
+	kademlia.fileChannel = fileChannel
+	kademlia.fileMap = fileMap
 
 	return kademlia
 }
