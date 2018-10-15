@@ -1,4 +1,4 @@
-package fileUtilsKademlia
+package kdmlib
 
 import (
 	"fmt"
@@ -11,22 +11,22 @@ import (
 
 const BUFFERSIZE = 1024
 
-type Network struct {
+type fileNetwork struct {
 	port        string
 	ip          string
 	conn        net.Listener
-	packetsChan chan udpPacketAndInfo
+	packetsChan chan TCPPacketAndInfo
 }
-type udpPacketAndInfo struct {
+type TCPPacketAndInfo struct {
 	connection net.Conn
 	packet     []byte
 }
 
-func InitNetwork(ip string, port string) *Network {
-	network := &Network{}
-	network.port = port
-	network.ip = ip
-	network.packetsChan = make(chan udpPacketAndInfo, 500)
+func InitFileNetwork(ip string, port string) *fileNetwork {
+	fileNetwork := &fileNetwork{}
+	fileNetwork.port = port
+	fileNetwork.ip = ip
+	fileNetwork.packetsChan = make(chan TCPPacketAndInfo, 500)
 
 	buffer := make([]byte, 4096)
 
@@ -35,34 +35,34 @@ func InitNetwork(ip string, port string) *Network {
 		fmt.Println("Error listening: ", err)
 		os.Exit(1)
 	}
-	network.conn = server
+	fileNetwork.conn = server
 
-	go network.TCPServer(3, buffer)
+	go fileNetwork.TCPServer(3, buffer)
 
-	return network
+	return fileNetwork
 }
-func (network *Network) TCPServer(numberOfWorkers int, buffer []byte) {
+func (fileNetwork *fileNetwork) TCPServer(numberOfWorkers int, buffer []byte) {
 	for i := 0; i < numberOfWorkers; i++ {
-		go network.ConnectionWorker()
+		go fileNetwork.ConnectionWorker()
 	}
-	defer network.conn.Close()
+	defer fileNetwork.conn.Close()
 	fmt.Println("Server started! Waiting for connections...")
 	for {
-		conn, err := network.conn.Accept()
+		conn, err := fileNetwork.conn.Accept()
 		if err != nil {
 			fmt.Println("Error: ", err)
 			os.Exit(1)
 		}
 		fmt.Println("Client connected")
 
-		network.packetsChan <- udpPacketAndInfo{connection: conn, packet: buffer}
+		fileNetwork.packetsChan <- TCPPacketAndInfo{connection: conn, packet: buffer}
 	}
 }
 
 //reads from the channel and handles the packet
-func (network *Network) ConnectionWorker() {
-	for toto := range network.packetsChan {
-		if network.conn != nil {
+func (fileNetwork *fileNetwork) ConnectionWorker() {
+	for toto := range fileNetwork.packetsChan {
+		if fileNetwork.conn != nil {
 			n, error := toto.connection.Read(toto.packet)
 			if error != nil {
 				fmt.Println("There is an error reading from connection", error.Error())
@@ -117,7 +117,7 @@ func fillString(returnString string, toLength int) string {
 	return returnString
 }
 
-func requestFile(filename string, address string) {
+func (network *fileNetwork) RequestFile(filename string, address string) {
 	connection, err := net.Dial("tcp", address)
 	if err != nil {
 		panic(err)
