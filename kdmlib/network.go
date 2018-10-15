@@ -24,11 +24,13 @@ const (
 type Network struct {
 	fileChannel   chan fileUtilsKademlia.Order
 	pinnerChannel chan fileUtilsKademlia.Order
+	packetsChan   chan udpPacketAndInfo
 	rt            RoutingTable
 	port          string
 	serverConn    *net.UDPConn
 	nodeID        string
 	ip            string
+	conn          net.PacketConn
 }
 
 func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bool) *Network {
@@ -37,10 +39,19 @@ func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bo
 	network.port = port
 	network.ip = ip
 	network.nodeID = nodeID
-	network.pinnerChannel, network.fileChannel = fileUtilsKademlia.CreateAndLaunchFileWorkers()
 
+	network.pinnerChannel, network.fileChannel = fileUtilsKademlia.CreateAndLaunchFileWorkers()
+	network.packetsChan = make(chan udpPacketAndInfo, 500)
+
+	//Set test flag to true for testing puposes
 	if !test {
-		go network.UdpServer(3, network.fileChannel)
+		buffer := make([]byte, 4096)
+		conn, err := net.ListenPacket("udp", network.ip+":"+network.port)
+		network.conn = conn
+		if err != nil {
+			log.Fatal(err)
+		}
+		go network.UdpServer(ALPHA, buffer)
 	}
 
 	return network
@@ -53,82 +64,80 @@ type udpPacketAndInfo struct {
 }
 
 //launch the udp server on port "port", with the specified amount of workers. needs the routing table and file channel
-func (network *Network) UdpServer(numberOfWorkers int, fileChannel chan fileUtilsKademlia.Order) {
-	pc, err := net.ListenPacket("udp", network.ip+":"+network.port)
-	packetsChan := make(chan udpPacketAndInfo, 500)
-	if err != nil {
-		log.Fatal(err)
-	}
+func (network *Network) UdpServer(numberOfWorkers int, buffer []byte) {
 
 	for i := 0; i < numberOfWorkers; i++ {
-		go network.ConnectionWorker(packetsChan, pc, fileChannel)
+		go network.ConnectionWorker()
 	}
 
+	defer network.conn.Close()
+
 	for {
-		buff := make([]byte, 4096)
-		n, addr, _ := pc.ReadFrom(buff)
-		packetsChan <- udpPacketAndInfo{n: n, address: addr, packet: buff}
+		n, addr, _ := network.conn.ReadFrom(buffer)
+		network.packetsChan <- udpPacketAndInfo{n: n, address: addr, packet: buffer}
 	}
 }
 
 //reads from the channel and handles the packet
-func (network *Network) ConnectionWorker(packetsChan chan udpPacketAndInfo, conn net.PacketConn, fileChannel chan fileUtilsKademlia.Order) {
-	for toto := range packetsChan {
-		container := &pb.Container{}
-		proto.Unmarshal(toto.packet[:toto.n], container)
-		network.requestHandler(container, conn, toto.address, network.nodeID, fileChannel)
+func (network *Network) ConnectionWorker() {
+	for toto := range network.packetsChan {
+		if network.conn != nil {
+			container := &pb.Container{}
+			proto.Unmarshal(toto.packet[:toto.n], container)
+			network.requestHandler(container, toto.address)
+		}
 	}
 }
 
 //handle the container according to its id, and update routing table
-func (network *Network) requestHandler(container *pb.Container, conn net.PacketConn, addr net.Addr, nodeId string, fileChannel chan fileUtilsKademlia.Order) {
+func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 	switch container.REQUEST_ID {
 	case Ping:
-		conn.WriteTo([]byte("pong"), addr)
+		network.conn.WriteTo([]byte("pong"), addr)
 		break
 	case FindContact:
-		packet, err := proto.Marshal(network.handleFindContact(container.GetRequestContact().ID, nodeId))
+		packet, err := proto.Marshal(network.handleFindContact(container.GetRequestContact().ID))
 		if err == nil {
-			conn.WriteTo(packet, addr)
+			network.conn.WriteTo(packet, addr)
 		} else {
 			fmt.Println("something went wrong")
 		}
 		break
 	case FindData:
-		packet, err := proto.Marshal(network.handleFindData(container.GetRequestData().KEY, nodeId))
+		packet, err := proto.Marshal(network.handleFindData(container.GetRequestData().KEY))
 		if err == nil {
-			conn.WriteTo(packet, addr)
+			network.conn.WriteTo(packet, addr)
 		} else {
 			fmt.Println("something went wrong")
 		}
 	case Store:
-		network.handleStore(network.nodeID+container.GetRequestStore().KEY, container.GetRequestStore().VALUE, fileChannel)
+		network.handleStore(network.nodeID+container.GetRequestStore().KEY, container.GetRequestStore().VALUE)
 		fmt.Println("STORE SUCCEEDED: ", network.nodeID)
-		conn.WriteTo([]byte("stored"), addr)
+		network.conn.WriteTo([]byte("stored"), addr)
 	}
 	network.rt.GiveOrder(OrderForRoutingTable{Action: ADD, Target: AddressTriple{Ip: strings.Split(addr.String(), ":")[0], Id: container.ID, Port: container.PORT}, FromPinger: false})
 }
 
 //write the file to the file channel
-func (network *Network) handleStore(name string, value []byte, fileChannel chan fileUtilsKademlia.Order) {
-	fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: name, Content: value}
+func (network *Network) handleStore(name string, value []byte) {
+	network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: name, Content: value}
 }
 
 //check if data is present and returns it if it is. Returns a list of contacts if not present
-func (network *Network) handleFindData(DataID string, nodeID string) *pb.Container {
+func (network *Network) handleFindData(DataID string) *pb.Container {
 	if fileUtilsKademlia.ReadFileFromOS(DataID) != nil {
 		Value := fileUtilsKademlia.ReadFileFromOS(DataID)
 		Info := &pb.RETURN_DATA{VALUE: Value}
 		Data := &pb.Container_ReturnData{ReturnData: Info}
-		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: nodeID, Attachment: Data}
+		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: network.nodeID, Attachment: Data}
 		return Container
 	} else {
-		return network.handleFindContact(DataID, nodeID)
+		return network.handleFindContact(DataID)
 	}
 }
 
 //returns list of contacts closest the contactId.
-func (network *Network) handleFindContact(contactID string, nodeId string) *pb.Container {
+func (network *Network) handleFindContact(contactID string) *pb.Container {
 	closestContacts := network.rt.FindKClosest(contactID)
 	contactListReply := []*pb.RETURN_CONTACTS_CONTACT_INFO{}
 	for i := range closestContacts {
@@ -138,7 +147,7 @@ func (network *Network) handleFindContact(contactID string, nodeId string) *pb.C
 	}
 	Info := &pb.RETURN_CONTACTS{ContactInfo: contactListReply}
 	Data := &pb.Container_ReturnContacts{ReturnContacts: Info}
-	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindContact, MSG_ID: "", ID: nodeId, Attachment: Data}
+	Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindContact, MSG_ID: "", ID: network.nodeID, Attachment: Data}
 	return Container
 }
 
@@ -151,7 +160,7 @@ func sendPacket(ip string, port string, packet []byte) ([]byte, error) {
 	defer conn.Close()
 
 	conn.Write(packet)
-	conn.SetReadDeadline(time.Now().Add(time.Second * 2))
+	conn.SetReadDeadline(time.Now().Add(time.Second * 1))
 
 	buff := make([]byte, 2048)
 	n, err := conn.Read(buff)
