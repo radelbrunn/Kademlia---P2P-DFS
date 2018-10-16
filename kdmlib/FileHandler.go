@@ -1,6 +1,7 @@
 package kdmlib
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -69,12 +70,12 @@ func (fileNetwork *fileNetwork) ConnectionWorker() {
 				return
 			}
 			filename := string(toto.packet[:n])
-			sendFileToClient(toto.connection, filename)
+			SendFileToClient(toto.connection, filename)
 		}
 	}
 }
 
-func sendFileToClient(connection net.Conn, filename string) {
+func SendFileToClient(connection net.Conn, filename string) {
 	fmt.Println("A client has connected!")
 	defer connection.Close()
 	file, err := os.Open("C:/Users/ReLaX/Desktop/" + filename) //just for testing
@@ -117,7 +118,7 @@ func fillString(returnString string, toLength int) string {
 	return returnString
 }
 
-func (network *fileNetwork) RequestFile(filename string, address string) {
+func RequestFile(filename string, address string) (string, []byte) {
 	connection, err := net.Dial("tcp", address)
 	if err != nil {
 		panic(err)
@@ -130,29 +131,11 @@ func (network *fileNetwork) RequestFile(filename string, address string) {
 	bufferFileSize := make([]byte, 10)
 
 	connection.Read(bufferFileSize)
-	fileSize, _ := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
 
 	connection.Read(bufferFileName)
 	fileName := strings.Trim(string(bufferFileName), ":")
 
-	newFile, err := os.Create(fileName)
-
-	if err != nil {
-		panic(err)
-	}
-	defer newFile.Close()
-	var receivedBytes int64
-
-	for {
-		if (fileSize - receivedBytes) < BUFFERSIZE {
-			io.CopyN(newFile, connection, (fileSize - receivedBytes))
-			connection.Read(make([]byte, (receivedBytes+BUFFERSIZE)-fileSize))
-			break
-		}
-		io.CopyN(newFile, connection, BUFFERSIZE)
-		receivedBytes += BUFFERSIZE
-	}
-	fmt.Println("Received file completely!")
-	fmt.Println(fileName)
-	fmt.Println(fileSize)
+	var buf bytes.Buffer
+	io.Copy(&buf, connection)
+	return fileName, buf.Bytes()
 }
