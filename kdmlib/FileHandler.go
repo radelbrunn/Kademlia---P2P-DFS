@@ -118,7 +118,7 @@ func fillString(returnString string, toLength int) string {
 	return returnString
 }
 
-func RequestFile(filename string, address string) (string, int64, []byte) {
+func (fileNetwork *fileNetwork) RequestFile(filename string, address string) (string, int64, []byte) {
 	connection, err := net.Dial("tcp", address)
 	if err != nil {
 		panic(err)
