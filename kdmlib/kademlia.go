@@ -434,7 +434,7 @@ func (kademlia *Kademlia) RepublishData(republishSleepTime int) {
 	dataMap := kademlia.network.fileMap.MapPresent
 	for fileName := range dataMap {
 		if dataMap[fileName] == true {
-			kademlia.StoreData(fileName, true)
+			kademlia.StoreData(fileName, nil,true)
 		}
 	}
 	kademlia.RepublishData(republishSleepTime)
