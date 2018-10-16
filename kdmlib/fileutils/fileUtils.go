@@ -7,9 +7,10 @@ import (
 	"os"
 	"sync"
 	"time"
+	"path/filepath"
 )
 
-const fileDirectory = ".files" + string(os.PathSeparator)
+const fileDirectory = "./.files" + string(os.PathSeparator)
 
 type pinnedFilesStruct struct {
 	PinnedFiles map[string]bool
@@ -87,13 +88,16 @@ func (f FileMap) IsPresent(name string) bool {
 
 func populateFileMap() map[string]bool {
 	filesMap := make(map[string]bool)
+	dir , _ := filepath.Abs(filepath.Dir(os.Args[0]))
+	fmt.Println(dir +fileDirectory)
 	files, err := ioutil.ReadDir(fileDirectory)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, f := range files {
-		if f.ModTime().Before(time.Now().Add(-time.Hour * 25)) {
+	for j, f := range files {
+		fmt.Println(j,":",f.Name())
+		if !f.ModTime().Before(time.Now().Add(-time.Hour * 25)) {
 			if !f.IsDir() {
 				filesMap[f.Name()] = true
 			}
@@ -180,8 +184,13 @@ func CreateAndLaunchFileWorkers() (chan Order, chan Order, FileMap) {
 	channelForPinner := make(chan Order, 1000)
 	channelForFileHandler := make(chan Order, 1000)
 	pinnedFiles := createPinnedFileList()
-	fileMap := FileMap{populateFileMap(), &sync.Mutex{}}
 
+	fileMap := FileMap{populateFileMap(), &sync.Mutex{}}
+	fmt.Println("filemap :")
+	for i,j := range fileMap.MapPresent {
+		fmt.Println(i,":",j)
+	}
+	fmt.Println("end of filemap")
 	go cleaner(pinnedFiles)
 	go pinner(channelForPinner, pinnedFiles)
 	go fileHandlerWorker(channelForFileHandler, fileMap)
