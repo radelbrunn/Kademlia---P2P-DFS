@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
-	"path/filepath"
 )
 
 const fileDirectory = "./.files" + string(os.PathSeparator)
@@ -88,15 +88,15 @@ func (f FileMap) IsPresent(name string) bool {
 
 func populateFileMap() map[string]bool {
 	filesMap := make(map[string]bool)
-	dir , _ := filepath.Abs(filepath.Dir(os.Args[0]))
-	fmt.Println(dir +fileDirectory)
+	dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+	fmt.Println(dir + fileDirectory)
 	files, err := ioutil.ReadDir(fileDirectory)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for j, f := range files {
-		fmt.Println(j,":",f.Name())
+		fmt.Println(j, ":", f.Name())
 		if !f.ModTime().Before(time.Now().Add(-time.Hour * 25)) {
 			if !f.IsDir() {
 				filesMap[f.Name()] = true
@@ -187,8 +187,8 @@ func CreateAndLaunchFileWorkers() (chan Order, chan Order, FileMap) {
 
 	fileMap := FileMap{populateFileMap(), &sync.Mutex{}}
 	fmt.Println("filemap :")
-	for i,j := range fileMap.MapPresent {
-		fmt.Println(i,":",j)
+	for i, j := range fileMap.MapPresent {
+		fmt.Println(i, ":", j)
 	}
 	fmt.Println("end of filemap")
 	go cleaner(pinnedFiles)

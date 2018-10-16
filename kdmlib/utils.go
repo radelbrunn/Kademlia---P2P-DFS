@@ -1,25 +1,26 @@
 package kdmlib
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"math/rand"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
-	"net/http"
-	"bytes"
-	"io/ioutil"
 )
 
 const (
-	K        = 20
-	ALPHA    = 3
-	IDLENGTH = 160
+	K             = 20
+	ALPHA         = 3
+	IDLENGTH      = 160
+	FILESIZELIMIT = 10000000000
 )
 
 //Generates a Random ID, of specified length, given by constant IDLENGTH
@@ -161,19 +162,19 @@ func AlreadyAsked(asked []AddressTriple, c AddressTriple) bool {
 	return false
 }
 
-func SendPostRequest(triple AddressTriple,content []byte ) string{
-	req , err := http.NewRequest("POST","http://"+triple.Ip+":8000/?fromNetwork=true",bytes.NewBuffer(content))
-	if err !=nil {
+func SendPostRequest(triple AddressTriple, content []byte) string {
+	req, err := http.NewRequest("POST", "http://"+triple.Ip+":8000/?fromNetwork=true", bytes.NewBuffer(content))
+	if err != nil {
 		fmt.Println("error creating the post request")
-	}else{
+	} else {
 		client := &http.Client{}
-		client.Timeout=time.Second*5
+		client.Timeout = time.Second * 5
 		resp, err := client.Do(req)
 		defer resp.Body.Close()
 		if err != nil {
 			fmt.Println("error sending the post request")
 			return ""
-		}else{
+		} else {
 			b, _ := ioutil.ReadAll(resp.Body)
 			return string(b)
 		}
@@ -181,19 +182,19 @@ func SendPostRequest(triple AddressTriple,content []byte ) string{
 	return ""
 }
 
-func SendGetRequest(triple AddressTriple,name string) []byte {
-	req , err := http.NewRequest("GET","http://"+triple.Ip+":8000/"+name,nil)
-	if err !=nil {
+func SendGetRequest(triple AddressTriple, name string) []byte {
+	req, err := http.NewRequest("GET", "http://"+triple.Ip+":8000/"+name, nil)
+	if err != nil {
 		fmt.Println("error creating the post request")
-	}else{
+	} else {
 		client := &http.Client{}
-		client.Timeout=time.Second*5
+		client.Timeout = time.Second * 5
 		resp, err := client.Do(req)
 		defer resp.Body.Close()
 		if err != nil {
 			fmt.Println("error sending the get request")
 			return nil
-		}else{
+		} else {
 			b, _ := ioutil.ReadAll(resp.Body)
 			return b
 		}

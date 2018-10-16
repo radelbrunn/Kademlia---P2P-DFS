@@ -62,7 +62,7 @@ func TestKademlia_LookupDataFail(t *testing.T) {
 
 	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
-	dataReturn := testKademlia.LookupData(targetData, true)
+	dataReturn := testKademlia.LookupData(targetData)
 
 	closest := testKademlia.closest
 
@@ -129,7 +129,7 @@ func TestKademlia_LookupDataSuccess(t *testing.T) {
 
 	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
-	dataReturn := testKademlia.LookupData(targetData, true)
+	dataReturn := testKademlia.LookupData(targetData)
 
 	fmt.Println("Data returned: ", string(dataReturn))
 

@@ -4,7 +4,6 @@ import (
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
 	"fmt"
 	"sync"
-	"time"
 )
 
 const (
@@ -28,7 +27,7 @@ type Kademlia struct {
 	fileChannel       chan fileUtilsKademlia.Order
 }
 
-// Initializes a Kademlia struct
+//Initializes a Kademlia struct, along with its necessary variables
 func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt RoutingTable, fileChannel chan fileUtilsKademlia.Order, fileMap fileUtilsKademlia.FileMap) *Kademlia {
 	kademlia := &Kademlia{}
 	kademlia.network = *nw
@@ -41,21 +40,21 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 	kademlia.fileChannel = fileChannel
 	kademlia.fileMap = fileMap
 
-	go kademlia.RepublishData(30)
+	//go kademlia.RepublishData(30)
 
 	return kademlia
 }
 
-//A struct for sending Lookup orders
+//A struct for sending Lookup orders.
 type LookupOrder struct {
 	LookupType int
 	Contact    AddressTriple
 	Target     string
 }
 
-//Listener of the answerChannel
-//Returns either a slice of AddressTriples, or data in form of a byte array
-func (kademlia *Kademlia) lookupListener(resultChannel chan interface{}) ([]AddressTriple, []byte) {
+//Listener of the answerChannel.
+//Returns either a slice of AddressTriples, or an AddressTriple, where the file is located (depending on the lookup type and outcomes).
+func (kademlia *Kademlia) lookupListener(resultChannel chan interface{}) ([]AddressTriple, AddressTriple) {
 	for {
 		select {
 		case answer := <-resultChannel:
@@ -65,17 +64,17 @@ func (kademlia *Kademlia) lookupListener(resultChannel chan interface{}) ([]Addr
 			//2. Successful LookupData, that was not able to locate data
 			case []AddressTriple:
 				fmt.Println("Answer: ", answer)
-				return answer, nil
+				return answer, AddressTriple{}
 				//A slice of bytes is only written to the channel in case the successful LookupData was able to found the file
-			case []byte:
-				fmt.Println("Data: ", string(answer))
+			case AddressTriple:
+				fmt.Println("Contact with Data: ", answer)
 				return nil, answer
 			}
 		}
 	}
 }
 
-//Performs operations when the slice of contacts comes back from the network
+//Performs operations when the slice of contacts comes back from the network.
 func (kademlia *Kademlia) handleContactAnswer(order LookupOrder, answerList []AddressTriple, resultChannel chan interface{}, lookupWorkerChannel chan LookupOrder) {
 	if len(answerList) != 0 {
 		fmt.Println("Got some contacts back: ", answerList)
@@ -97,7 +96,7 @@ func (kademlia *Kademlia) handleContactAnswer(order LookupOrder, answerList []Ad
 	}
 }
 
-//User by the Lookup function to perform FIND_NODE and FIND_DATA RPC calls
+//User by the Lookup function to perform FIND_NODE and FIND_DATA RPC calls.
 func (kademlia *Kademlia) lookupWorker(routineId int, lookupWorkerChannel chan LookupOrder, resultChannel chan interface{}) {
 	fmt.Println("Lookup goroutine ", routineId, " started...")
 
@@ -123,12 +122,12 @@ func (kademlia *Kademlia) lookupWorker(routineId int, lookupWorkerChannel chan L
 
 		case DataLookup:
 			//Send a FIND_DATA RPC to the contact
-			data, contacts, err := kademlia.network.SendFindData(order.Contact, order.Target)
+			contactWithData, contacts, err := kademlia.network.SendFindData(order.Contact, order.Target)
 
 			if err == nil {
-				if data != nil {
+				if contacts == nil {
 					//If some data is found,  write to the answerChannel (i.e. "return")
-					resultChannel <- data
+					resultChannel <- contactWithData
 				} else {
 					kademlia.handleContactAnswer(order, contacts, resultChannel, lookupWorkerChannel)
 				}
@@ -149,12 +148,12 @@ func (kademlia *Kademlia) lookupWorker(routineId int, lookupWorkerChannel chan L
 	}
 }
 
-// LookupAlgorithm initialization function
-// Uses worker pools when sending queries to nodes
-// Stops if same answer is received multiple times or if all contacts in "kademlia.closest" have been asked.
-// Returns a slice of AddressTriples and a bytearray with the file contents.
-// Supports two lookupTypes: ContactLookup and DataLookup
-func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]AddressTriple, []byte) {
+//LookupAlgorithm initialization function
+//Uses worker pools when sending queries to nodes
+//Stops if same answer is received multiple times or if all contacts in "kademlia.closest" have been asked.
+//Returns a slice of AddressTriples, or an AddressTriple, which has the desired file.
+//Supports two lookupTypes: ContactLookup and DataLookup
+func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]AddressTriple, AddressTriple) {
 
 	//Instantiate channels for lookupWorkers and answers
 	lookupWorkerChannel := make(chan LookupOrder, kademlia.alpha)
@@ -176,7 +175,7 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 	//If true, return nil
 	if len(kademlia.closest) == 0 {
 		fmt.Println("The routing table is empty. No contacts to ask.")
-		return nil, nil
+		return nil, AddressTriple{}
 	}
 
 	//Start at most Alpha lookup workers
@@ -201,38 +200,44 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 
 }
 
-//Uses LookupAlgorithm to get the data with a filename
-func (kademlia *Kademlia) LookupData(fileName string, test bool) []byte {
+//Uses LookupAlgorithm to get the data with a fileName.
+func (kademlia *Kademlia) LookupData(fileHash string) []byte {
 
+	//Check if there is a contact, that has the file
+	_, contactWithData := kademlia.LookupAlgorithm(fileHash, DataLookup)
 
-	//Check the contents of the return
-	//If data is returned, then Store file locally
-	_, data := kademlia.LookupAlgorithm(fileName, DataLookup)
-	if data != nil {
-		kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
-		fmt.Println("File located and downloaded")
-		return data
+	//If yes, download the file via TCP and store it locally.
+	if contactWithData.Id != "" {
+		data := kademlia.network.RequestFile(contactWithData, fileHash)
+		if data != nil {
+			kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileHash, Content: data}
+			fmt.Println("File located and downloaded")
+			return data
+		} else {
+			fmt.Println("File could not be located")
+			return nil
+		}
 	} else {
 		fmt.Println("File could not be located")
 		return nil
 	}
 }
 
-//A struct for sending Store orders
+//A struct for sending Store orders.
 type StoreOrder struct {
 	Contact  AddressTriple
-	Data     []byte
 	FileName string
 }
 
+//Used to send STORE RPC to nodes.
 func (kademlia *Kademlia) storeWorker(routineId int, storeWorkerChannel chan StoreOrder, resultChannel chan bool) {
 	fmt.Println("Lookup goroutine ", routineId, " started...")
 
 	//Execute orders from the channel
 	for order := range storeWorkerChannel {
 
-		fmt.Println("Order: [", order.Contact, " ", string(order.Data), " ", order.FileName, "]")
-		answer, err := kademlia.network.SendStore(order.Contact, order.Data, order.FileName)
+		fmt.Println("Order: [", order.Contact, " ", order.FileName, "]")
+		answer, err := kademlia.network.SendStore(order.Contact, order.FileName)
 
 		if err == nil && answer == "stored" {
 			resultChannel <- true
@@ -242,8 +247,7 @@ func (kademlia *Kademlia) storeWorker(routineId int, storeWorkerChannel chan Sto
 	}
 }
 
-//Listener of the answerChannel
-//Returns either a slice of AddressTriples, or data in form of a byte array
+//Listener of the storeResultChannel.
 func (kademlia *Kademlia) storeListener(resultChannel chan bool, expectedNumAnswers int) {
 	answersReturned := 0
 	for {
@@ -265,19 +269,13 @@ func (kademlia *Kademlia) storeListener(resultChannel chan bool, expectedNumAnsw
 
 //Finds K closest contacts and stores the file.
 //Uses LookupContact to find closest contacts to hash of fileName.
-func (kademlia *Kademlia) StoreData(fileName string, file []byte  ,test bool) {
+func (kademlia *Kademlia) StoreData(fileName string) {
 	fileNameHash := fileName
 
-	//Set test for tests with shorter IDs (for development purposes)
-	if test {
-		fileNameHash = "11111111"
-	}
-
-	//Read the file locally
-
+	//TODO: add fileMap check
 	//Check whether the file exists.
 	//If yes, get the list of closest and send the file to these nodes.
-	if file != nil {
+	if true {
 		contacts, _ := kademlia.LookupAlgorithm(fileNameHash, ContactLookup)
 		if contacts != nil {
 
@@ -292,7 +290,7 @@ func (kademlia *Kademlia) StoreData(fileName string, file []byte  ,test bool) {
 
 			//Loop through the list of closest and send orders to the store channel
 			for _, contact := range contacts {
-				storeWorkerChannel <- StoreOrder{contact, file, fileName}
+				storeWorkerChannel <- StoreOrder{contact, fileName}
 			}
 
 			kademlia.storeListener(resultChannel, len(contacts))
@@ -307,9 +305,10 @@ func (kademlia *Kademlia) StoreData(fileName string, file []byte  ,test bool) {
 
 }
 
-//Ask the next contact, which is fetched from kademlia.GetNextContact()
+//Ask the next contact, which is fetched from kademlia.GetNextContact().
 func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupWorkerChannel chan LookupOrder) {
 	kademlia.lock.Lock()
+
 	nextContact := kademlia.getNextContact()
 	if nextContact != nil {
 		fmt.Println("Next ", nextContact)
@@ -318,11 +317,11 @@ func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupWo
 	} else {
 		fmt.Println("No more to ask")
 	}
-	kademlia.lock.Unlock()
 
+	kademlia.lock.Unlock()
 }
 
-// Goes through the list of closest contacts and returns the next node to ask
+// Goes through the list of closest contacts and returns the next node to ask.
 func (kademlia *Kademlia) getNextContact() *AddressTriple {
 	for _, e := range kademlia.closest {
 		if !AlreadyAsked(kademlia.askedClosest, e) {
@@ -333,10 +332,11 @@ func (kademlia *Kademlia) getNextContact() *AddressTriple {
 }
 
 // Refreshes the list of closest contacts
-// All nodes that doesn't already exist in kademlia.closest will be appended and then sorted
-// If no new AddressTriple is added to kademlia.closest and no closer node has been found, "kademlia.noCloserNodeCalls" is incremented
+// All nodes that doesn't already exist in kademlia.closest will be appended and then sorted.
+// If no new AddressTriple is added to kademlia.closest and no closer node has been found, "kademlia.noCloserNodeCalls" is incremented.
 func (kademlia *Kademlia) refreshClosest(newContacts []AddressTriple, target string) {
 	kademlia.lock.Lock()
+
 	closestSoFar := kademlia.closest[0]
 	elementsAlreadyPresent := true
 
@@ -369,7 +369,7 @@ func (kademlia *Kademlia) refreshClosest(newContacts []AddressTriple, target str
 	kademlia.lock.Unlock()
 }
 
-//Sorts the list of closest contacts, according to distance to target, slices off the tail if more than K nodes are present
+//Sorts the list of closest contacts, according to distance to target, slices off the tail if more than K nodes are present.
 func (kademlia *Kademlia) sortContacts(target string) {
 	sortedList := []AddressTriple{}
 
@@ -403,7 +403,7 @@ func (kademlia *Kademlia) sortContacts(target string) {
 	kademlia.closest = sortedList
 }
 
-//Checks if all contacts have been asked
+//Checks if all contacts have been asked.
 func (kademlia *Kademlia) askedAllContacts() (allAsked bool) {
 	allAsked = true
 	for i := range kademlia.closest {
@@ -426,7 +426,7 @@ func (kademlia *Kademlia) askedAllContacts() (allAsked bool) {
 	return allAsked
 }
 
-// RepublishData republish all data the node is responsible for to make sure data is replicated in the network.
+/*/ RepublishData republish all data the node is responsible for to make sure data is replicated in the network.
 func (kademlia *Kademlia) RepublishData(republishSleepTime int) {
 	//Sleep the thread 'republishSleepTime' seconds
 	time.Sleep(time.Second * time.Duration(republishSleepTime))
@@ -439,3 +439,4 @@ func (kademlia *Kademlia) RepublishData(republishSleepTime int) {
 	}
 	kademlia.RepublishData(republishSleepTime)
 }
+*/
