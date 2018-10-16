@@ -118,7 +118,7 @@ func fillString(returnString string, toLength int) string {
 	return returnString
 }
 
-func RequestFile(filename string, address string) (string, []byte) {
+func RequestFile(filename string, address string) (string, int64, []byte) {
 	connection, err := net.Dial("tcp", address)
 	if err != nil {
 		panic(err)
@@ -131,11 +131,12 @@ func RequestFile(filename string, address string) (string, []byte) {
 	bufferFileSize := make([]byte, 10)
 
 	connection.Read(bufferFileSize)
+	fileSize, _ := strconv.ParseInt(strings.Trim(string(bufferFileSize), ":"), 10, 64)
 
 	connection.Read(bufferFileName)
 	fileName := strings.Trim(string(bufferFileName), ":")
 
 	var buf bytes.Buffer
 	io.Copy(&buf, connection)
-	return fileName, buf.Bytes()
+	return fileName, fileSize, buf.Bytes()
 }
