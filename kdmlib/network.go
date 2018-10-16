@@ -27,19 +27,17 @@ type Network struct {
 	packetsChan   chan udpPacketAndInfo
 	rt            RoutingTable
 	port          string
-	filehandler   *fileNetwork
 	nodeID        string
 	ip            string
 	conn          net.PacketConn
 }
 
-func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, fileHandler *fileNetwork, test bool) *Network {
+func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bool) *Network {
 	network := &Network{}
 	network.rt = rt
 	network.port = port
 	network.ip = ip
 	network.nodeID = nodeID
-	network.filehandler = fileHandler
 	network.pinnerChannel, network.fileChannel, _ = fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	network.packetsChan = make(chan udpPacketAndInfo, 500)
 

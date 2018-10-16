@@ -24,10 +24,11 @@ type Kademlia struct {
 	exitThreshold     int
 	lock              sync.Mutex
 	fileChannel       chan fileUtilsKademlia.Order
+	filehandler       *fileNetwork
 }
 
 // Initializes a Kademlia struct
-func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt RoutingTable) *Kademlia {
+func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt RoutingTable, fileHandler *fileNetwork) *Kademlia {
 	kademlia := &Kademlia{}
 	kademlia.network = *nw
 	kademlia.nodeId = nodeId
@@ -36,6 +37,7 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 	kademlia.k = k
 	kademlia.noCloserNodeCalls = 0
 	kademlia.exitThreshold = 3
+	kademlia.filehandler = fileHandler
 
 	_, kademlia.fileChannel, _ = fileUtilsKademlia.CreateAndLaunchFileWorkers()
 
@@ -209,6 +211,7 @@ func (kademlia *Kademlia) LookupData(fileName string, test bool) (success bool) 
 	//Check the contents of the return
 	//If data is returned, then Store file locally
 	_, data := kademlia.LookupAlgorithm(fileNameHash, DataLookup)
+	//here is the call <--- we want data
 	if data != nil {
 		kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 		fmt.Println("File located and downloaded")
