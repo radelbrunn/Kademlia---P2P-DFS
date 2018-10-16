@@ -11,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"net/http"
+	"bytes"
+	"io/ioutil"
 )
 
 const (
@@ -156,4 +159,44 @@ func AlreadyAsked(asked []AddressTriple, c AddressTriple) bool {
 		}
 	}
 	return false
+}
+
+func SendPostRequest(triple AddressTriple,content []byte ) string{
+	req , err := http.NewRequest("POST","http://"+triple.Ip+":8000/?fromNetwork=true",bytes.NewBuffer(content))
+	if err !=nil {
+		fmt.Println("error creating the post request")
+	}else{
+		client := &http.Client{}
+		client.Timeout=time.Second*5
+		resp, err := client.Do(req)
+		defer resp.Body.Close()
+		if err != nil {
+			fmt.Println("error sending the post request")
+			return ""
+		}else{
+			b, _ := ioutil.ReadAll(resp.Body)
+			return string(b)
+		}
+	}
+	return ""
+}
+
+func SendGetRequest(triple AddressTriple,name string) []byte {
+	req , err := http.NewRequest("GET","http://"+triple.Ip+":8000/"+name,nil)
+	if err !=nil {
+		fmt.Println("error creating the post request")
+	}else{
+		client := &http.Client{}
+		client.Timeout=time.Second*5
+		resp, err := client.Do(req)
+		defer resp.Body.Close()
+		if err != nil {
+			fmt.Println("error sending the get request")
+			return nil
+		}else{
+			b, _ := ioutil.ReadAll(resp.Body)
+			return b
+		}
+	}
+	return nil
 }
