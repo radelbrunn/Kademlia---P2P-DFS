@@ -203,16 +203,11 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 
 //Uses LookupAlgorithm to get the data with a filename
 func (kademlia *Kademlia) LookupData(fileName string, test bool) []byte {
-	fileNameHash := HashKademliaID(fileName)
 
-	//Set test for tests with shorter IDs (for development purposes)
-	if test {
-		fileNameHash = fileName
-	}
 
 	//Check the contents of the return
 	//If data is returned, then Store file locally
-	_, data := kademlia.LookupAlgorithm(fileNameHash, DataLookup)
+	_, data := kademlia.LookupAlgorithm(fileName, DataLookup)
 	if data != nil {
 		kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 		fmt.Println("File located and downloaded")
@@ -270,8 +265,8 @@ func (kademlia *Kademlia) storeListener(resultChannel chan bool, expectedNumAnsw
 
 //Finds K closest contacts and stores the file.
 //Uses LookupContact to find closest contacts to hash of fileName.
-func (kademlia *Kademlia) StoreData(fileName string, test bool) {
-	fileNameHash := HashKademliaID(fileName)
+func (kademlia *Kademlia) StoreData(fileName string, file []byte  ,test bool) {
+	fileNameHash := fileName
 
 	//Set test for tests with shorter IDs (for development purposes)
 	if test {
@@ -279,7 +274,6 @@ func (kademlia *Kademlia) StoreData(fileName string, test bool) {
 	}
 
 	//Read the file locally
-	file := fileUtilsKademlia.ReadFileFromOS(fileName)
 
 	//Check whether the file exists.
 	//If yes, get the list of closest and send the file to these nodes.

@@ -56,9 +56,8 @@ func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.
 	hash := sha1.Sum(b)
 	stringHash := string(hash[:])
 
-	//TODO send request to k closest nodes
-
 	dependencies.FileChannel <- filesUtils.Order{filesUtils.ADD, stringHash, b}
+	go dependencies.kdm.StoreData(stringHash,b,false)
 
 	if err != nil {
 		w.WriteHeader(500)
@@ -70,14 +69,27 @@ func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.
 }
 
 func (dependencies RestDependencies) pin(w http.ResponseWriter, r *http.Request) {
-	dependencies.Pinning <- filesUtils.Order{Action: filesUtils.ADD, Name: mux.Vars(r)["name"]}
-	w.WriteHeader(200)
-	w.Write(nil)
+	name := mux.Vars(r)["name"]
+
+	if dependencies.Map.IsPresent(name){
+		dependencies.Pinning <- filesUtils.Order{Action: filesUtils.ADD, Name: name}
+		w.WriteHeader(200)
+		w.Write([]byte("file pinned"))
+	}else{
+		w.WriteHeader(404)
+		w.Write([]byte("file doesn't exist on this node"))
+	}
 }
 
 func (dependencies RestDependencies) unpin(w http.ResponseWriter, r *http.Request) {
-	dependencies.Pinning <- filesUtils.Order{filesUtils.REMOVE, mux.Vars(r)["name"], nil}
-	//TODO add function to locate the nodes who have the file
-	w.WriteHeader(200)
-	w.Write(nil)
+	name := mux.Vars(r)["name"]
+
+	if dependencies.Map.IsPresent(name){
+		dependencies.Pinning <- filesUtils.Order{Action: filesUtils.REMOVE, Name: name}
+		w.WriteHeader(200)
+		w.Write([]byte("file unpinned"))
+	}else{
+		w.WriteHeader(404)
+		w.Write([]byte("file doesn't exist on this node"))
+	}
 }
