@@ -80,6 +80,7 @@ func (dependencies RestDependencies) deleteFile(w http.ResponseWriter, r *http.R
 
 func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
+	args := r.URL.Query()
 	hash := sha1.Sum(b)
 	var stringHash string
 	for _, i := range hash {
@@ -93,9 +94,11 @@ func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.
 		stringHash = stringHash + str2
 	}
 
-	dependencies.updateOriginalFile(stringHash, true)
+	if !(args.Get("fromNetwork")=="true"){
+		dependencies.updateOriginalFile(stringHash, true)
+		go dependencies.kdm.StoreData(stringHash, b, false)
+	}
 	dependencies.FileChannel <- filesUtils.Order{filesUtils.ADD, stringHash, b}
-	go dependencies.kdm.StoreData(stringHash, b, false)
 
 	if err != nil {
 		w.WriteHeader(500)
