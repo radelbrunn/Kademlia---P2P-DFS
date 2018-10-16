@@ -223,7 +223,6 @@ func (kademlia *Kademlia) LookupData(fileHash string) []byte {
 //A struct for sending Store orders
 type StoreOrder struct {
 	Contact  AddressTriple
-	Data     []byte
 	FileName string
 }
 
@@ -233,8 +232,8 @@ func (kademlia *Kademlia) storeWorker(routineId int, storeWorkerChannel chan Sto
 	//Execute orders from the channel
 	for order := range storeWorkerChannel {
 
-		fmt.Println("Order: [", order.Contact, " ", string(order.Data), " ", order.FileName, "]")
-		answer, err := kademlia.network.SendStore(order.Contact, order.Data, order.FileName)
+		fmt.Println("Order: [", order.Contact, " ", order.FileName, "]")
+		answer, err := kademlia.network.SendStore(order.Contact, order.FileName)
 
 		if err == nil && answer == "stored" {
 			resultChannel <- true
@@ -267,12 +266,13 @@ func (kademlia *Kademlia) storeListener(resultChannel chan bool, expectedNumAnsw
 
 //Finds K closest contacts and stores the file.
 //Uses LookupContact to find closest contacts to hash of fileName.
-func (kademlia *Kademlia) StoreData(fileName string, file []byte) {
+func (kademlia *Kademlia) StoreData(fileName string) {
 	fileNameHash := fileName
 
+	//TODO: add fileMap check
 	//Check whether the file exists.
 	//If yes, get the list of closest and send the file to these nodes.
-	if file != nil {
+	if true {
 		contacts, _ := kademlia.LookupAlgorithm(fileNameHash, ContactLookup)
 		if contacts != nil {
 
@@ -287,7 +287,7 @@ func (kademlia *Kademlia) StoreData(fileName string, file []byte) {
 
 			//Loop through the list of closest and send orders to the store channel
 			for _, contact := range contacts {
-				storeWorkerChannel <- StoreOrder{contact, file, fileName}
+				storeWorkerChannel <- StoreOrder{contact, fileName}
 			}
 
 			kademlia.storeListener(resultChannel, len(contacts))

@@ -95,7 +95,7 @@ func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.
 
 	if !(args.Get("fromNetwork") == "true") {
 		dependencies.updateOriginalFile(stringHash, true)
-		go dependencies.kdm.StoreData(stringHash, b)
+		go dependencies.kdm.StoreData(stringHash)
 	}
 	dependencies.FileChannel <- filesUtils.Order{filesUtils.ADD, stringHash, b}
 
@@ -139,7 +139,7 @@ func (dependencies RestDependencies) republish() {
 		dependencies.lock.Lock()
 		for i, j := range dependencies.myFiles {
 			if j {
-				dependencies.kdm.StoreData(i, filesUtils.ReadFileFromOS(i))
+				dependencies.kdm.StoreData(i)
 			}
 		}
 		dependencies.lock.Unlock()

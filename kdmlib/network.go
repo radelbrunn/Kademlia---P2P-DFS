@@ -181,7 +181,7 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 			fmt.Println("something went wrong")
 		}
 	case Store:
-		network.handleStore(container.GetRequestStore().KEY, container.GetRequestStore().VALUE, AddressTriple{addr.(*net.UDPAddr).IP.String(), container.PORT, container.ID})
+		network.handleStore(container.GetRequestStore().KEY, AddressTriple{addr.(*net.UDPAddr).IP.String(), container.PORT, container.ID})
 		fmt.Println("STORE SUCCEEDED: ", network.nodeID)
 		network.udpConn.WriteTo([]byte("stored"), addr)
 	}
@@ -189,20 +189,15 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 }
 
 //Write the file to the file channel
-func (network *Network) handleStore(fileName string, value []byte, callbackContact AddressTriple) {
-	fmt.Println("I AM ALIVE! FETCHING FILE.....")
+func (network *Network) handleStore(fileName string, callbackContact AddressTriple) {
 	file := network.RequestFile(callbackContact, fileName)
-
-	fmt.Println("FILE RECEIVED", file)
 	network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: network.nodeID + fileName, Content: file}
 }
 
 //Check if data is present and returns it if it is. Returns a list of contacts if not present
 func (network *Network) handleFindData(DataID string) *pb.Container {
-	fmt.Println(network.fileMap.MapPresent[DataID])
-	//if network.fileMap.MapPresent[DataID] == true
+	//TODO: check file map instead
 	if fileUtilsKademlia.ReadFileFromOS(DataID) != nil {
-		fmt.Println("I HAVE THE FILE", network.ip, ":", network.port)
 		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: network.nodeID, Attachment: nil}
 		return Container
 	} else {
@@ -247,9 +242,9 @@ func sendPacket(ip string, port string, packet []byte) ([]byte, error) {
 }
 
 //Send store request
-func (network *Network) SendStore(toContact AddressTriple, data []byte, fileName string) (string, error) {
+func (network *Network) SendStore(toContact AddressTriple, fileName string) (string, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
-	Info := &pb.REQUEST_STORE{KEY: fileName, VALUE: data}
+	Info := &pb.REQUEST_STORE{KEY: fileName, VALUE: nil}
 	Data := &pb.Container_RequestStore{RequestStore: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
 	marshaled, _ := proto.Marshal(Container)
