@@ -218,12 +218,14 @@ func TestKademlia_LookupDataTimeout(t *testing.T) {
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, chanFile, chanPin, fileMap)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
 
-	dataReturned := testKademlia.LookupData(targetData, true)
+	dataReturned := testKademlia.LookupData(targetData)
 
 	if dataReturned != nil {
 		t.Error("Did not expect a data return")
 		t.Fail()
 	}
+
+	time.Sleep(time.Second * 2)
 
 	if len(testKademlia.rt.FindKClosest(targetData)) != 0 && len(rt.FindKClosest(targetData)) != 0 {
 		t.Error("Routing tables are inconsistent")

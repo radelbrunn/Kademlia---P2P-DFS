@@ -12,7 +12,7 @@ func TestKademlia_StoreData(t *testing.T) {
 
 	os.Mkdir(".files/", 0755)
 
-	fileName := "kdmtestfile"
+	fileName := "11111111"
 
 	ioutil.WriteFile(".files"+string(os.PathSeparator)+fileName, []byte("hello world"), 0644)
 
@@ -78,27 +78,27 @@ func TestKademlia_StoreData(t *testing.T) {
 
 	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
-	testKademlia.StoreData(fileName, true)
+	testKademlia.StoreData(fileName, fileUtilsKademlia.ReadFileFromOS(fileName))
 
 	time.Sleep(time.Second * 1)
 
-	data := fileUtilsKademlia.ReadFileFromOS("10010000kdmtestfile")
+	data := fileUtilsKademlia.ReadFileFromOS("1001000011111111")
 
 	if string(data) != "hello world" {
 		t.Error("File was not uploaded")
 		t.Fail()
 	} else {
-		os.Remove(".files" + string(os.PathSeparator) + "10010000kdmtestfile")
+		os.Remove(".files" + string(os.PathSeparator) + "1001000011111111")
 	}
 
-	data = fileUtilsKademlia.ReadFileFromOS("11110100kdmtestfile")
+	data = fileUtilsKademlia.ReadFileFromOS("1111010011111111")
 
 	if string(data) != "hello world" {
 		t.Error("File was not uploaded")
 		t.Fail()
 	} else {
-		os.Remove(".files" + string(os.PathSeparator) + "11110100kdmtestfile")
+		os.Remove(".files" + string(os.PathSeparator) + "1111010011111111")
 	}
 
-	os.Remove(".files" + string(os.PathSeparator) + "kdmtestfile")
+	os.Remove(".files" + string(os.PathSeparator) + "11111111")
 }

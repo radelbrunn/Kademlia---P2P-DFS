@@ -4,7 +4,6 @@ import (
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
 	"fmt"
 	"sync"
-	"time"
 )
 
 const (
@@ -41,7 +40,7 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 	kademlia.fileChannel = fileChannel
 	kademlia.fileMap = fileMap
 
-	go kademlia.RepublishData(30)
+	//go kademlia.RepublishData(30)
 
 	return kademlia
 }
@@ -202,14 +201,13 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 }
 
 //Uses LookupAlgorithm to get the data with a filename
-func (kademlia *Kademlia) LookupData(fileName string, test bool) []byte {
-
+func (kademlia *Kademlia) LookupData(fileHash string) []byte {
 
 	//Check the contents of the return
 	//If data is returned, then Store file locally
-	_, data := kademlia.LookupAlgorithm(fileName, DataLookup)
+	_, data := kademlia.LookupAlgorithm(fileHash, DataLookup)
 	if data != nil {
-		kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
+		kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileHash, Content: data}
 		fmt.Println("File located and downloaded")
 		return data
 	} else {
@@ -265,15 +263,8 @@ func (kademlia *Kademlia) storeListener(resultChannel chan bool, expectedNumAnsw
 
 //Finds K closest contacts and stores the file.
 //Uses LookupContact to find closest contacts to hash of fileName.
-func (kademlia *Kademlia) StoreData(fileName string, file []byte  ,test bool) {
+func (kademlia *Kademlia) StoreData(fileName string, file []byte) {
 	fileNameHash := fileName
-
-	//Set test for tests with shorter IDs (for development purposes)
-	if test {
-		fileNameHash = "11111111"
-	}
-
-	//Read the file locally
 
 	//Check whether the file exists.
 	//If yes, get the list of closest and send the file to these nodes.
@@ -310,6 +301,7 @@ func (kademlia *Kademlia) StoreData(fileName string, file []byte  ,test bool) {
 //Ask the next contact, which is fetched from kademlia.GetNextContact()
 func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupWorkerChannel chan LookupOrder) {
 	kademlia.lock.Lock()
+
 	nextContact := kademlia.getNextContact()
 	if nextContact != nil {
 		fmt.Println("Next ", nextContact)
@@ -318,8 +310,8 @@ func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupWo
 	} else {
 		fmt.Println("No more to ask")
 	}
-	kademlia.lock.Unlock()
 
+	kademlia.lock.Unlock()
 }
 
 // Goes through the list of closest contacts and returns the next node to ask
@@ -337,6 +329,7 @@ func (kademlia *Kademlia) getNextContact() *AddressTriple {
 // If no new AddressTriple is added to kademlia.closest and no closer node has been found, "kademlia.noCloserNodeCalls" is incremented
 func (kademlia *Kademlia) refreshClosest(newContacts []AddressTriple, target string) {
 	kademlia.lock.Lock()
+
 	closestSoFar := kademlia.closest[0]
 	elementsAlreadyPresent := true
 
@@ -426,7 +419,7 @@ func (kademlia *Kademlia) askedAllContacts() (allAsked bool) {
 	return allAsked
 }
 
-// RepublishData republish all data the node is responsible for to make sure data is replicated in the network.
+/*/ RepublishData republish all data the node is responsible for to make sure data is replicated in the network.
 func (kademlia *Kademlia) RepublishData(republishSleepTime int) {
 	//Sleep the thread 'republishSleepTime' seconds
 	time.Sleep(time.Second * time.Duration(republishSleepTime))
@@ -439,3 +432,4 @@ func (kademlia *Kademlia) RepublishData(republishSleepTime int) {
 	}
 	kademlia.RepublishData(republishSleepTime)
 }
+*/
