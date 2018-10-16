@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	K        = 20
-	ALPHA    = 3
-	IDLENGTH = 160
+	K             = 20
+	ALPHA         = 3
+	IDLENGTH      = 160
+	FILESIZELIMIT = 100000000
 )
 
 //Generates a Random ID, of specified length, given by constant IDLENGTH

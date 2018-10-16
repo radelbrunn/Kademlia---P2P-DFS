@@ -4,10 +4,13 @@ import (
 	"Kademlia---P2P-DFS/github.com/golang/protobuf/proto"
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
 	pb "Kademlia---P2P-DFS/kdmlib/proto_config"
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net"
+	"os"
 	"strings"
 	"time"
 )
@@ -22,16 +25,18 @@ const (
 )
 
 type Network struct {
-	fileChannel   chan fileUtilsKademlia.Order
-	pinnerChannel chan fileUtilsKademlia.Order
-	packetsChan   chan udpPacketAndInfo
-	rt            RoutingTable
-	port          string
-	serverConn    *net.UDPConn
-	nodeID        string
-	ip            string
-	fileMap       fileUtilsKademlia.FileMap
-	conn          net.PacketConn
+	fileChannel    chan fileUtilsKademlia.Order
+	pinnerChannel  chan fileUtilsKademlia.Order
+	udpPacketsChan chan udpPacketAndInfo
+	tcpPacketsChan chan tcpPacketAndInfo
+	rt             RoutingTable
+	port           string
+	serverConn     *net.UDPConn
+	nodeID         string
+	ip             string
+	fileMap        fileUtilsKademlia.FileMap
+	udpConn        net.PacketConn
+	tcpConn        net.Listener
 }
 
 func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bool, fileChannel chan fileUtilsKademlia.Order, pinnerChannel chan fileUtilsKademlia.Order, fileMap fileUtilsKademlia.FileMap) *Network {
@@ -45,17 +50,30 @@ func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bo
 	network.pinnerChannel = pinnerChannel
 	network.fileMap = fileMap
 
-	network.packetsChan = make(chan udpPacketAndInfo, 500)
+	network.udpPacketsChan = make(chan udpPacketAndInfo, 500)
+	network.tcpPacketsChan = make(chan tcpPacketAndInfo, 500)
 
 	//Set test flag to true for testing puposes
 	if !test {
-		buffer := make([]byte, 4096)
-		conn, err := net.ListenPacket("udp", network.ip+":"+network.port)
-		network.conn = conn
-		if err != nil {
-			log.Fatal(err)
+		udpBuffer := make([]byte, 4096)
+		tcpBuffer := make([]byte, 4096)
+
+		//Initiate UDP connection (for handling the requests)
+		udpConn, udpErr := net.ListenPacket("udp", network.ip+":"+network.port)
+		if udpErr != nil {
+			log.Fatal(udpErr)
 		}
-		go network.UdpServer(ALPHA, buffer)
+		network.udpConn = udpConn
+
+		//Initiate TCP connection (for sending files)
+		tcpConn, tcpErr := net.Listen("tcp", network.ip+":"+network.port)
+		if tcpErr != nil {
+			log.Fatal(tcpErr)
+		}
+		network.tcpConn = tcpConn
+
+		go network.UDPServer(ALPHA, udpBuffer)
+		go network.TCPServer(ALPHA, tcpBuffer)
 	}
 
 	return network
@@ -67,25 +85,25 @@ type udpPacketAndInfo struct {
 	packet  []byte
 }
 
-//launch the udp server on port "port", with the specified amount of workers. needs the routing table and file channel
-func (network *Network) UdpServer(numberOfWorkers int, buffer []byte) {
+//Launch the UDP server on port "port", with the specified amount of workers.
+func (network *Network) UDPServer(numberOfWorkers int, buffer []byte) {
 
 	for i := 0; i < numberOfWorkers; i++ {
-		go network.ConnectionWorker()
+		go network.UDPConnectionWorker()
 	}
 
-	defer network.conn.Close()
+	defer network.udpConn.Close()
 
 	for {
-		n, addr, _ := network.conn.ReadFrom(buffer)
-		network.packetsChan <- udpPacketAndInfo{n: n, address: addr, packet: buffer}
+		n, addr, _ := network.udpConn.ReadFrom(buffer)
+		network.udpPacketsChan <- udpPacketAndInfo{n: n, address: addr, packet: buffer}
 	}
 }
 
-//reads from the channel and handles the packet
-func (network *Network) ConnectionWorker() {
-	for toto := range network.packetsChan {
-		if network.conn != nil {
+//Reads from the channel and handles the UDP packet
+func (network *Network) UDPConnectionWorker() {
+	for toto := range network.udpPacketsChan {
+		if network.udpConn != nil {
 			container := &pb.Container{}
 			proto.Unmarshal(toto.packet[:toto.n], container)
 			network.requestHandler(container, toto.address)
@@ -93,16 +111,65 @@ func (network *Network) ConnectionWorker() {
 	}
 }
 
-//handle the container according to its id, and update routing table
+type tcpPacketAndInfo struct {
+	connection net.Conn
+	packet     []byte
+}
+
+//Launch the TCP server on port "port", with the specified amount of workers.
+func (network *Network) TCPServer(numberOfWorkers int, buffer []byte) {
+
+	for i := 0; i < numberOfWorkers; i++ {
+		go network.TCPConnectionWorker()
+	}
+
+	defer network.tcpConn.Close()
+
+	for {
+		conn, err := network.tcpConn.Accept()
+		if err != nil {
+			fmt.Println("Error: ", err)
+			os.Exit(1)
+		}
+		fmt.Println("Client connected")
+
+		network.tcpPacketsChan <- tcpPacketAndInfo{connection: conn, packet: buffer}
+	}
+}
+
+//Reads from the channel and handles the TCP packet
+func (network *Network) TCPConnectionWorker() {
+	for toto := range network.tcpPacketsChan {
+		if network.tcpConn != nil {
+			n, _ := toto.connection.Read(toto.packet)
+			filename := string(toto.packet[:n])
+			sendFileTCP(toto.connection, filename)
+		}
+	}
+}
+
+//Send a file via TCP (writes to a connection, which is provided as argument)
+func sendFileTCP(conn net.Conn, fileName string) {
+	defer conn.Close()
+
+	file := fileUtilsKademlia.ReadFileFromOS(fileName)
+	if file != nil {
+		if len(file) < FILESIZELIMIT {
+			conn.Write(file)
+		}
+	}
+}
+
+//Handle the container according to its ID and update routing table
 func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 	switch container.REQUEST_ID {
 	case Ping:
-		network.conn.WriteTo([]byte("pong"), addr)
+		network.udpConn.WriteTo([]byte("pong"), addr)
 		break
 	case FindContact:
 		packet, err := proto.Marshal(network.handleFindContact(container.GetRequestContact().ID))
 		if err == nil {
-			network.conn.WriteTo(packet, addr)
+			network.udpConn.WriteTo(packet, addr)
 		} else {
 			fmt.Println("something went wrong")
 		}
@@ -110,24 +177,24 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 	case FindData:
 		packet, err := proto.Marshal(network.handleFindData(container.GetRequestData().KEY))
 		if err == nil {
-			network.conn.WriteTo(packet, addr)
+			network.udpConn.WriteTo(packet, addr)
 		} else {
 			fmt.Println("something went wrong")
 		}
 	case Store:
 		network.handleStore(network.nodeID+container.GetRequestStore().KEY, container.GetRequestStore().VALUE)
 		fmt.Println("STORE SUCCEEDED: ", network.nodeID)
-		network.conn.WriteTo([]byte("stored"), addr)
+		network.udpConn.WriteTo([]byte("stored"), addr)
 	}
 	network.rt.GiveOrder(OrderForRoutingTable{Action: ADD, Target: AddressTriple{Ip: strings.Split(addr.String(), ":")[0], Id: container.ID, Port: container.PORT}, FromPinger: false})
 }
 
-//write the file to the file channel
+//Write the file to the file channel
 func (network *Network) handleStore(name string, value []byte) {
 	network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: name, Content: value}
 }
 
-//check if data is present and returns it if it is. Returns a list of contacts if not present
+//Check if data is present and returns it if it is. Returns a list of contacts if not present
 func (network *Network) handleFindData(DataID string) *pb.Container {
 	if fileUtilsKademlia.ReadFileFromOS(DataID) != nil {
 		Value := fileUtilsKademlia.ReadFileFromOS(DataID)
@@ -140,7 +207,7 @@ func (network *Network) handleFindData(DataID string) *pb.Container {
 	}
 }
 
-//returns list of contacts closest the contactId.
+//Returns list of contacts closest the contactId.
 func (network *Network) handleFindContact(contactID string) *pb.Container {
 	closestContacts := network.rt.FindKClosest(contactID)
 	contactListReply := []*pb.RETURN_CONTACTS_CONTACT_INFO{}
@@ -155,12 +222,13 @@ func (network *Network) handleFindContact(contactID string) *pb.Container {
 	return Container
 }
 
-//sends a packet and returns the answers if any, returns error if time out
+//Sends a packet and returns the answers if any, returns error if time out
 func sendPacket(ip string, port string, packet []byte) ([]byte, error) {
 	conn, err := net.Dial("udp", ip+":"+port)
 	if err != nil {
 		return nil, err
 	}
+
 	defer conn.Close()
 
 	conn.Write(packet)
@@ -175,7 +243,7 @@ func sendPacket(ip string, port string, packet []byte) ([]byte, error) {
 	}
 }
 
-//send store request
+//Send store request
 func (network *Network) SendStore(toContact AddressTriple, data []byte, fileName string) (string, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_STORE{KEY: fileName, VALUE: data}
@@ -191,7 +259,7 @@ func (network *Network) SendStore(toContact AddressTriple, data []byte, fileName
 	return string(answer), err
 }
 
-//send findnode request, return an address triple slice
+//Send findnode request, return an address triple slice
 func (network *Network) SendFindNode(toContact AddressTriple, targetID string) ([]AddressTriple, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_CONTACT{ID: targetID}
@@ -214,7 +282,7 @@ func (network *Network) SendFindNode(toContact AddressTriple, targetID string) (
 	}
 }
 
-//send finddata request, if err = nil , first returned value is the data , if data == nil get address triple from the second value.
+//Send finddata request, if err = nil , first returned value is the data , if data == nil get address triple from the second value.
 func (network *Network) SendFindData(toContact AddressTriple, targetID string) ([]byte, []AddressTriple, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_DATA{KEY: targetID}
@@ -237,4 +305,19 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 		return nil, result, err
 	}
 	return answer, nil, err
+}
+
+//Request a file via TCP
+func (network *Network) RequestFile(toContact AddressTriple, fileName string) []byte {
+	conn, err := net.Dial("tcp", toContact.Ip+":"+toContact.Port)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+	conn.Write([]byte(fileName))
+
+	var buf bytes.Buffer
+	io.Copy(&buf, conn)
+
+	return buf.Bytes()
 }

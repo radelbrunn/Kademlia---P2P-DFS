@@ -2,6 +2,7 @@ package kdmlib
 
 import (
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -83,6 +84,9 @@ func TestKademlia_StoreData(t *testing.T) {
 	time.Sleep(time.Second * 1)
 
 	data := fileUtilsKademlia.ReadFileFromOS("1001000011111111")
+
+	fc := nw2.RequestFile(testContacts[12], "00110011")
+	fmt.Println("CONTENTS: ", string(fc))
 
 	if string(data) != "hello world" {
 		t.Error("File was not uploaded")
