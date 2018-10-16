@@ -17,7 +17,7 @@ const (
 	K             = 20
 	ALPHA         = 3
 	IDLENGTH      = 160
-	FILESIZELIMIT = 100000000
+	FILESIZELIMIT = 10000000000
 )
 
 //Generates a Random ID, of specified length, given by constant IDLENGTH

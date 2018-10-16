@@ -60,7 +60,7 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 
 	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
-	contacts, data := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
+	contacts, contactWithData := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
 
 	testKademlia.closest = []AddressTriple{}
 	for _, e := range testContacts {
@@ -76,7 +76,7 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 		}
 	}
 
-	if data != nil {
+	if contactWithData.Id != "" {
 		t.Error("Did not expect a data return")
 		t.Fail()
 	}

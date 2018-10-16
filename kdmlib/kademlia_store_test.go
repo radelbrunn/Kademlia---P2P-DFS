@@ -2,7 +2,6 @@ package kdmlib
 
 import (
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -54,7 +53,7 @@ func TestKademlia_StoreData(t *testing.T) {
 	time.Sleep(time.Second * 1)
 
 	rt3 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId3)
-	for _, e := range testContacts[11:] {
+	for _, e := range testContacts[11:21] {
 		rt3.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
@@ -75,7 +74,7 @@ func TestKademlia_StoreData(t *testing.T) {
 	InitNetwork(port1, "127.0.0.1", rt1, nodeId1, false, chanFile1, chanPin1, fileMap1)
 	InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false, chanFile3, chanPin3, fileMap3)
 	InitNetwork(port4, "127.0.0.1", rt4, nodeId4, false, chanFile4, chanPin4, fileMap4)
-	nw2 := InitNetwork(port2, "127.0.0.1", rt2, nodeId2, true, chanFile2, chanPin2, fileMap2)
+	nw2 := InitNetwork(port2, "127.0.0.1", rt2, nodeId2, false, chanFile2, chanPin2, fileMap2)
 
 	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
@@ -85,8 +84,8 @@ func TestKademlia_StoreData(t *testing.T) {
 
 	data := fileUtilsKademlia.ReadFileFromOS("1001000011111111")
 
-	fc := nw2.RequestFile(testContacts[12], "00110011")
-	fmt.Println("CONTENTS: ", string(fc))
+	//fc := nw2.RequestFile(testContacts[12], "00110011")
+	//fmt.Println("CONTENTS: ", string(fc))
 
 	if string(data) != "hello world" {
 		t.Error("File was not uploaded")

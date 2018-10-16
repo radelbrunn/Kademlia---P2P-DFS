@@ -31,7 +31,6 @@ type Network struct {
 	tcpPacketsChan chan tcpPacketAndInfo
 	rt             RoutingTable
 	port           string
-	serverConn     *net.UDPConn
 	nodeID         string
 	ip             string
 	fileMap        fileUtilsKademlia.FileMap
@@ -182,7 +181,7 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 			fmt.Println("something went wrong")
 		}
 	case Store:
-		network.handleStore(network.nodeID+container.GetRequestStore().KEY, container.GetRequestStore().VALUE)
+		network.handleStore(container.GetRequestStore().KEY, container.GetRequestStore().VALUE, AddressTriple{addr.(*net.UDPAddr).IP.String(), container.PORT, container.ID})
 		fmt.Println("STORE SUCCEEDED: ", network.nodeID)
 		network.udpConn.WriteTo([]byte("stored"), addr)
 	}
@@ -190,17 +189,21 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 }
 
 //Write the file to the file channel
-func (network *Network) handleStore(name string, value []byte) {
-	network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: name, Content: value}
+func (network *Network) handleStore(fileName string, value []byte, callbackContact AddressTriple) {
+	fmt.Println("I AM ALIVE! FETCHING FILE.....")
+	file := network.RequestFile(callbackContact, fileName)
+
+	fmt.Println("FILE RECEIVED", file)
+	network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: network.nodeID + fileName, Content: file}
 }
 
 //Check if data is present and returns it if it is. Returns a list of contacts if not present
 func (network *Network) handleFindData(DataID string) *pb.Container {
+	fmt.Println(network.fileMap.MapPresent[DataID])
+	//if network.fileMap.MapPresent[DataID] == true
 	if fileUtilsKademlia.ReadFileFromOS(DataID) != nil {
-		Value := fileUtilsKademlia.ReadFileFromOS(DataID)
-		Info := &pb.RETURN_DATA{VALUE: Value}
-		Data := &pb.Container_ReturnData{ReturnData: Info}
-		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: network.nodeID, Attachment: Data}
+		fmt.Println("I HAVE THE FILE", network.ip, ":", network.port)
+		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: network.nodeID, Attachment: nil}
 		return Container
 	} else {
 		return network.handleFindContact(DataID)
@@ -283,7 +286,7 @@ func (network *Network) SendFindNode(toContact AddressTriple, targetID string) (
 }
 
 //Send finddata request, if err = nil , first returned value is the data , if data == nil get address triple from the second value.
-func (network *Network) SendFindData(toContact AddressTriple, targetID string) ([]byte, []AddressTriple, error) {
+func (network *Network) SendFindData(toContact AddressTriple, targetID string) (AddressTriple, []AddressTriple, error) {
 	msgID := GenerateRandID(int64(rand.Intn(100)))
 	Info := &pb.REQUEST_DATA{KEY: targetID}
 	Data := &pb.Container_RequestData{RequestData: Info}
@@ -297,14 +300,19 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 	}
 	object := &pb.Container{}
 	proto.Unmarshal(answer, object)
+	fmt.Println(object)
 	if object.REQUEST_ID == FindContact {
 		result := make([]AddressTriple, len(object.GetReturnContacts().ContactInfo))
 		for i := 0; i < len(object.GetReturnContacts().ContactInfo); i++ {
 			result[i] = AddressTriple{object.GetReturnContacts().ContactInfo[i].IP, object.GetReturnContacts().ContactInfo[i].PORT, object.GetReturnContacts().ContactInfo[i].ID}
 		}
-		return nil, result, err
+		return AddressTriple{}, result, err
+	} else if object.REQUEST_ID == FindData {
+		fmt.Println("I have the data!", toContact)
+		return toContact, nil, err
 	}
-	return answer, nil, err
+
+	return AddressTriple{}, nil, err
 }
 
 //Request a file via TCP

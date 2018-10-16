@@ -179,9 +179,9 @@ func TestKademlia_LookupContactTimeout(t *testing.T) {
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, chanFile, chanPin, fileMap)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
 
-	contacts, file := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
+	contacts, contactWithData := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
 
-	if file != nil {
+	if contactWithData.Id != "" {
 		t.Error("Did not expect a data return")
 		t.Fail()
 	}
@@ -245,9 +245,9 @@ func TestKademlia_LookupEmptyRT(t *testing.T) {
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, chanFile, chanPin, fileMap)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
 
-	contacts, file := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
+	contacts, contactWithData := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
 
-	if contacts != nil || file != nil {
+	if contacts != nil || contactWithData.Id != "" {
 		fmt.Println("Expected nil returns, as the routing table was initially empty")
 	}
 }
