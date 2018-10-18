@@ -12,7 +12,7 @@ func TestKademlia_StoreData(t *testing.T) {
 
 	fileName := "11111111"
 
-	ioutil.WriteFile("./.files"+string(os.PathSeparator)+fileName, []byte("hello world"), 0644)
+	ioutil.WriteFile(fileUtilsKademlia.FileDirectory+fileName, []byte("hello world"), 0644)
 
 	nodeId1 := "10010000"
 	port1 := "12000"
@@ -82,14 +82,11 @@ func TestKademlia_StoreData(t *testing.T) {
 
 	data := fileUtilsKademlia.ReadFileFromOS("1001000011111111")
 
-	//fc := nw2.RequestFile(testContacts[12], "00110011")
-	//fmt.Println("CONTENTS: ", string(fc))
-
 	if string(data) != "hello world" {
 		t.Error("File was not uploaded")
 		t.Fail()
 	} else {
-		os.Remove("./.files" + string(os.PathSeparator) + "1001000011111111")
+		os.Remove(fileUtilsKademlia.FileDirectory + "1001000011111111")
 	}
 
 	data = fileUtilsKademlia.ReadFileFromOS("1111010011111111")
@@ -98,8 +95,8 @@ func TestKademlia_StoreData(t *testing.T) {
 		t.Error("File was not uploaded")
 		t.Fail()
 	} else {
-		os.Remove("./.files" + string(os.PathSeparator) + "1111010011111111")
+		os.Remove(fileUtilsKademlia.FileDirectory + "1111010011111111")
 	}
 
-	os.Remove("./.files" + string(os.PathSeparator) + "11111111")
+	os.Remove(fileUtilsKademlia.FileDirectory + "11111111")
 }

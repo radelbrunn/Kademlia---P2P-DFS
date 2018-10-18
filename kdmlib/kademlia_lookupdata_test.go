@@ -82,10 +82,8 @@ func TestKademlia_LookupDataFail(t *testing.T) {
 }
 
 func TestKademlia_LookupDataSuccess(t *testing.T) {
-
-	os.Mkdir(".files/", 0755)
 	fileName := "11111111"
-	ioutil.WriteFile(".files"+string(os.PathSeparator)+fileName, []byte("hello world"), 0644)
+	ioutil.WriteFile(fileUtilsKademlia.FileDirectory+fileName, []byte("hello world"), 0644)
 
 	nodeId1 := "00000011"
 	port1 := "12002"
@@ -138,5 +136,5 @@ func TestKademlia_LookupDataSuccess(t *testing.T) {
 		t.Fail()
 	}
 
-	os.Remove(".files" + string(os.PathSeparator) + "11111111")
+	os.Remove(fileUtilsKademlia.FileDirectory + fileName)
 }
