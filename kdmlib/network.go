@@ -192,14 +192,14 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 func (network *Network) handleStore(fileName string, callbackContact AddressTriple) {
 	data := network.RequestFile(callbackContact, fileName)
 	if data != nil {
+		//nodeID is appended to the fileName for testing
 		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: network.nodeID + fileName, Content: data}
 	}
 }
 
 //Check if data is present and returns it if it is. Returns a list of contacts if not present.
 func (network *Network) handleFindData(DataID string) *pb.Container {
-	//TODO: check file map instead
-	if fileUtilsKademlia.ReadFileFromOS(DataID) != nil {
+	if network.fileMap.IsPresent(DataID) {
 		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: network.nodeID, Attachment: nil}
 		return Container
 	} else {

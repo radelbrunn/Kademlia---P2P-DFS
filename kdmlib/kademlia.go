@@ -40,8 +40,6 @@ func NewKademliaInstance(nw *Network, nodeId string, alpha int, k int, rt Routin
 	kademlia.fileChannel = fileChannel
 	kademlia.fileMap = fileMap
 
-	//go kademlia.RepublishData(30)
-
 	return kademlia
 }
 
@@ -425,18 +423,3 @@ func (kademlia *Kademlia) askedAllContacts() (allAsked bool) {
 	}
 	return allAsked
 }
-
-/*/ RepublishData republish all data the node is responsible for to make sure data is replicated in the network.
-func (kademlia *Kademlia) RepublishData(republishSleepTime int) {
-	//Sleep the thread 'republishSleepTime' seconds
-	time.Sleep(time.Second * time.Duration(republishSleepTime))
-
-	dataMap := kademlia.network.fileMap.MapPresent
-	for fileName := range dataMap {
-		if dataMap[fileName] == true {
-			kademlia.StoreData(fileName, nil,true)
-		}
-	}
-	kademlia.RepublishData(republishSleepTime)
-}
-*/
