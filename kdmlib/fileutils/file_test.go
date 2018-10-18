@@ -48,14 +48,14 @@ func TestRemoveOldFilesNotPinnedTooOld(t *testing.T) {
 	os.Mkdir(".files/", 0755)
 
 	pinnedFiles := createPinnedFileList()
-	ioutil.WriteFile(fileDirectory+string(filepath.Separator)+"testFile", []byte("hello world"), 0644)
+	ioutil.WriteFile(FileDirectory+string(filepath.Separator)+"testFile", []byte("hello world"), 0644)
 
 	os.Chtimes(".files"+string(filepath.Separator)+
 		"testFile", time.Now().Add(-time.Hour*25), time.Now().Add(-time.Hour*25))
 
 	removeOldFiles(pinnedFiles)
 
-	files, _ := ioutil.ReadDir(fileDirectory)
+	files, _ := ioutil.ReadDir(FileDirectory)
 
 	for _, f := range files {
 		fmt.Println(f.Name())
@@ -72,11 +72,11 @@ func TestRemoveOldFilesNotPinnedOK(t *testing.T) {
 	os.Mkdir(".files/", 0755)
 
 	pinnedFiles := createPinnedFileList()
-	ioutil.WriteFile(fileDirectory+string(filepath.Separator)+"testFile", []byte("hello world"), 0644)
+	ioutil.WriteFile(FileDirectory+string(filepath.Separator)+"testFile", []byte("hello world"), 0644)
 
 	removeOldFiles(pinnedFiles)
 
-	files, _ := ioutil.ReadDir(fileDirectory)
+	files, _ := ioutil.ReadDir(FileDirectory)
 	isremoved := true
 	for _, f := range files {
 		fmt.Println(f.Name())
@@ -96,15 +96,15 @@ func TestShouldNotRemovePinnedFile(t *testing.T) {
 	os.Mkdir(".files/", 0755)
 
 	pinnedFiles := createPinnedFileList()
-	ioutil.WriteFile(fileDirectory+string(filepath.Separator)+"testFile", []byte("hello world"), 0644)
+	ioutil.WriteFile(FileDirectory+string(filepath.Separator)+"testFile", []byte("hello world"), 0644)
 
-	os.Chtimes(fileDirectory+string(os.PathSeparator)+"testFile",
+	os.Chtimes(FileDirectory+string(os.PathSeparator)+"testFile",
 		time.Now().Add(-time.Hour*25), time.Now().Add(-time.Hour*25))
 
 	pinFile(pinnedFiles, Order{ADD, "testFile", nil})
 
 	removeOldFiles(pinnedFiles)
-	files, _ := ioutil.ReadDir(fileDirectory)
+	files, _ := ioutil.ReadDir(FileDirectory)
 	isremoved := true
 	for _, f := range files {
 		fmt.Println(f.Name())
@@ -124,13 +124,13 @@ func TestShouldRemoveFile(t *testing.T) {
 	os.Mkdir(".files/", 0755)
 
 	pinnedFiles := createPinnedFileList()
-	ioutil.WriteFile(fileDirectory+string(filepath.Separator)+"testFile", []byte("hello world"), 0644)
+	ioutil.WriteFile(FileDirectory+string(filepath.Separator)+"testFile", []byte("hello world"), 0644)
 
-	os.Chtimes(fileDirectory+string(os.PathSeparator)+"testFile",
+	os.Chtimes(FileDirectory+string(os.PathSeparator)+"testFile",
 		time.Now().Add(-time.Hour*25), time.Now().Add(-time.Hour*25))
 	removeOldFiles(pinnedFiles)
 
-	files, _ := ioutil.ReadDir(fileDirectory)
+	files, _ := ioutil.ReadDir(FileDirectory)
 	isremoved := true
 	for _, f := range files {
 		fmt.Println(f.Name())
@@ -169,7 +169,7 @@ func TestRemoveFile(t *testing.T) {
 	fileHandler(Order{ADD, "testFile", []byte("helloWorld")}, fm)
 	fileHandler(Order{REMOVE, "testFile", []byte("helloWorld")}, fm)
 
-	files, _ := ioutil.ReadDir(fileDirectory)
+	files, _ := ioutil.ReadDir(FileDirectory)
 	isremoved := true
 	for _, f := range files {
 		fmt.Println(f.Name())
@@ -192,7 +192,7 @@ func TestUpdateFileFromHandler(t *testing.T) {
 	fileHandler(Order{ADD, "testFile", []byte("helloWorld")}, fm)
 	timenow := time.Now()
 	fileHandler(Order{ADD, "testFile", []byte("helloWorld")}, fm)
-	fi, _ := os.Stat(fileDirectory + string(os.PathSeparator) + "testFile")
+	fi, _ := os.Stat(FileDirectory + string(os.PathSeparator) + "testFile")
 	if !timenow.Before(fi.ModTime()) {
 		t.Error("time should be updated and is not")
 	}
@@ -205,7 +205,7 @@ func TestPinRemove(t *testing.T) {
 	pinnedFiles := createPinnedFileList()
 	pinFile(pinnedFiles, Order{ADD, "toto", nil})
 	pinFile(pinnedFiles, Order{REMOVE, "toto", nil})
-	if pinnedFiles.pinnedFiles["toto"] {
+	if pinnedFiles.PinnedFiles["toto"] {
 		t.Error("entry not removed")
 	}
 }

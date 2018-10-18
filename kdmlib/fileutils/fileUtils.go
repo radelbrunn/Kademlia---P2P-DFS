@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const fileDirectory = "./.files" + string(os.PathSeparator)
+const FileDirectory = "./.files" + string(os.PathSeparator)
 
 type pinnedFilesStruct struct {
 	PinnedFiles map[string]bool
@@ -36,7 +36,7 @@ func checkIfInList(pinnedFiles map[string]bool, name string) bool {
 
 //creates a directory to put files in
 func createFilesDirectory() {
-	os.Mkdir(fileDirectory, 0755)
+	os.Mkdir(FileDirectory, 0755)
 }
 
 //add or removes files from the node
@@ -45,8 +45,8 @@ func fileHandler(order Order, fileMap FileMap) {
 
 		fileMap.set(order.Name, true)
 		//checks if the file is already present
-		if _, err := os.Stat(fileDirectory + order.Name); os.IsNotExist(err) {
-			err := ioutil.WriteFile(fileDirectory+string(os.PathSeparator)+order.Name, order.Content, 0644)
+		if _, err := os.Stat(FileDirectory + order.Name); os.IsNotExist(err) {
+			err := ioutil.WriteFile(FileDirectory+string(os.PathSeparator)+order.Name, order.Content, 0644)
 			if err != nil {
 				fmt.Println("something went wrong while creating file " + order.Name)
 			}
@@ -57,7 +57,7 @@ func fileHandler(order Order, fileMap FileMap) {
 			updateFile(order.Name)
 		}
 	} else if order.Action == REMOVE {
-		err := os.Remove(fileDirectory + string(os.PathSeparator) + order.Name)
+		err := os.Remove(FileDirectory + string(os.PathSeparator) + order.Name)
 		fileMap.set(order.Name, false)
 		if err != nil {
 			fmt.Println("something went wrong while removing file " + order.Name)
@@ -89,8 +89,8 @@ func (f FileMap) IsPresent(name string) bool {
 func populateFileMap() map[string]bool {
 	filesMap := make(map[string]bool)
 	dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
-	fmt.Println(dir + fileDirectory)
-	files, err := ioutil.ReadDir(fileDirectory)
+	fmt.Println(dir + FileDirectory)
+	files, err := ioutil.ReadDir(FileDirectory)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func pinner(orders chan Order, pinnedFiles *pinnedFilesStruct) {
 
 //remove old files that are more than 25 hours old and not in the pinned list
 func removeOldFiles(pinnedFiles *pinnedFilesStruct) {
-	files, err := ioutil.ReadDir(fileDirectory)
+	files, err := ioutil.ReadDir(FileDirectory)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func removeOldFiles(pinnedFiles *pinnedFilesStruct) {
 			pinnedFiles.lock.Lock()
 			if !f.IsDir() && !checkIfInList(pinnedFiles.PinnedFiles, f.Name()) {
 				fmt.Println(f.Name(), " : file too old, thus removing it")
-				os.Remove(fileDirectory + f.Name())
+				os.Remove(FileDirectory + f.Name())
 			}
 			pinnedFiles.lock.Unlock()
 		}
@@ -160,7 +160,7 @@ func cleaner(pinnedFiles *pinnedFilesStruct) {
 //reads file from os and returns a byte slice.
 // Can be used to check if a file is present
 func ReadFileFromOS(name string) []byte {
-	dat, err := ioutil.ReadFile(fileDirectory + name)
+	dat, err := ioutil.ReadFile(FileDirectory + name)
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -172,7 +172,7 @@ func ReadFileFromOS(name string) []byte {
 //update last modified date to now
 
 func updateFile(name string) {
-	os.Chtimes(fileDirectory+name, time.Now(), time.Now())
+	os.Chtimes(FileDirectory+name, time.Now(), time.Now())
 }
 
 //creates all the workers needed to take care of the files
