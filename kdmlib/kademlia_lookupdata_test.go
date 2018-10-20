@@ -62,7 +62,7 @@ func TestKademlia_LookupDataFail(t *testing.T) {
 
 	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
-	dataReturn := testKademlia.LookupData(targetData, true)
+	dataReturn := testKademlia.LookupData(targetData)
 
 	closest := testKademlia.closest
 
@@ -82,10 +82,8 @@ func TestKademlia_LookupDataFail(t *testing.T) {
 }
 
 func TestKademlia_LookupDataSuccess(t *testing.T) {
-
-	os.Mkdir(".files/", 0755)
 	fileName := "11111111"
-	ioutil.WriteFile(".files"+string(os.PathSeparator)+fileName, []byte("hello world"), 0644)
+	ioutil.WriteFile(fileUtilsKademlia.FileDirectory+fileName, []byte("hello world"), 0644)
 
 	nodeId1 := "00000011"
 	port1 := "12002"
@@ -129,7 +127,7 @@ func TestKademlia_LookupDataSuccess(t *testing.T) {
 
 	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
-	dataReturn := testKademlia.LookupData(targetData, true)
+	dataReturn := testKademlia.LookupData(targetData)
 
 	fmt.Println("Data returned: ", string(dataReturn))
 
@@ -138,5 +136,5 @@ func TestKademlia_LookupDataSuccess(t *testing.T) {
 		t.Fail()
 	}
 
-	os.Remove(".files" + string(os.PathSeparator) + "11111111")
+	os.Remove(fileUtilsKademlia.FileDirectory + fileName)
 }

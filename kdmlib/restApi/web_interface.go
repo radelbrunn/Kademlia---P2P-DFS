@@ -1,15 +1,15 @@
 package restApi
 
 import (
+	"Kademlia---P2P-DFS/kdmlib"
 	filesUtils "Kademlia---P2P-DFS/kdmlib/fileutils"
 	"crypto/sha1"
+	"fmt"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
-	"Kademlia---P2P-DFS/kdmlib"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -37,7 +37,6 @@ func LaunchRestAPI(fileMap filesUtils.FileMap, fileChannel chan filesUtils.Order
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
 
-
 func (dependencies RestDependencies) getFile(w http.ResponseWriter, r *http.Request) {
 	args := mux.Vars(r)["name"]
 	if dependencies.Map.IsPresent(args) {
@@ -50,7 +49,7 @@ func (dependencies RestDependencies) getFile(w http.ResponseWriter, r *http.Requ
 		w.Write(value)
 	} else {
 
-		if result := dependencies.kdm.LookupData(args, false); result != nil {
+		if result := dependencies.kdm.LookupData(args); result != nil {
 			w.WriteHeader(200)
 			w.Write(result)
 		} else {
@@ -72,7 +71,7 @@ func (dependencies RestDependencies) deleteFile(w http.ResponseWriter, r *http.R
 		dependencies.FileChannel <- filesUtils.Order{filesUtils.REMOVE, name, nil}
 		w.WriteHeader(200)
 		w.Write([]byte("file deleted from this node"))
-	}else{
+	} else {
 		w.WriteHeader(404)
 		w.Write([]byte("could not delete the file as the node is not the original publisher"))
 	}
@@ -94,9 +93,9 @@ func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.
 		stringHash = stringHash + str2
 	}
 
-	if !(args.Get("fromNetwork")=="true"){
+	if !(args.Get("fromNetwork") == "true") {
 		dependencies.updateOriginalFile(stringHash, true)
-		go dependencies.kdm.StoreData(stringHash, b, false)
+		go dependencies.kdm.StoreData(stringHash)
 	}
 	dependencies.FileChannel <- filesUtils.Order{filesUtils.ADD, stringHash, b}
 
@@ -140,7 +139,7 @@ func (dependencies RestDependencies) republish() {
 		dependencies.lock.Lock()
 		for i, j := range dependencies.myFiles {
 			if j {
-				dependencies.kdm.StoreData(i, filesUtils.ReadFileFromOS(i), false)
+				dependencies.kdm.StoreData(i)
 			}
 		}
 		dependencies.lock.Unlock()
