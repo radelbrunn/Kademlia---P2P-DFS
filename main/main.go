@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -46,6 +47,7 @@ func StartKademlia() {
 	fmt.Println(firstNode)
 	if firstNode.Id != nodeId && firstNode.Id != "" {
 		rt.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, firstNode, false})
+		time.Sleep(time.Second)
 	}
 	nw := kdmlib.InitNetwork(port, ip, rt, nodeId, false, chanFile, chanPin, fileMap)
 	kdm := kdmlib.NewKademliaInstance(nw, nodeId, kdmlib.ALPHA, kdmlib.K, rt, chanFile, fileMap)
