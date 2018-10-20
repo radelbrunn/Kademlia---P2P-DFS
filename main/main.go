@@ -47,7 +47,7 @@ func StartKademlia() {
 	if firstNode.Id != nodeId && firstNode.Id != "" {
 		rt.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, firstNode, false})
 	}
-	nw := kdmlib.InitNetwork(port, ip, rt, nodeId, false, chanFile, chanPin, fileMap)
+	nw := kdmlib.InitNetwork(port, ip, rt, nodeId, false, false, chanFile, chanPin, fileMap)
 	kdm := kdmlib.NewKademliaInstance(nw, nodeId, kdmlib.ALPHA, kdmlib.K, rt, chanFile, fileMap)
 	restApi.LaunchRestAPI(fileMap, chanFile, chanPin, *kdm)
 }

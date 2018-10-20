@@ -36,15 +36,17 @@ type Network struct {
 	fileMap        fileUtilsKademlia.FileMap
 	udpConn        net.PacketConn
 	tcpConn        net.Listener
+	fileTest       bool
 }
 
 //Initializes necessary variables and structs of the network, starts a UDP and a TCP server.
-func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bool, fileChannel chan fileUtilsKademlia.Order, pinnerChannel chan fileUtilsKademlia.Order, fileMap fileUtilsKademlia.FileMap) *Network {
+func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, noNetworkTest bool, fileTest bool, fileChannel chan fileUtilsKademlia.Order, pinnerChannel chan fileUtilsKademlia.Order, fileMap fileUtilsKademlia.FileMap) *Network {
 	network := &Network{}
 	network.rt = rt
 	network.port = port
 	network.ip = ip
 	network.nodeID = nodeID
+	network.fileTest = fileTest
 
 	network.fileChannel = fileChannel
 	network.pinnerChannel = pinnerChannel
@@ -54,7 +56,7 @@ func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bo
 	network.tcpPacketsChan = make(chan tcpPacketAndInfo, 500)
 
 	//Set test flag to true for testing puposes
-	if !test {
+	if !noNetworkTest {
 		udpBuffer := make([]byte, 4096)
 		tcpBuffer := make([]byte, 4096)
 
@@ -192,8 +194,11 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 func (network *Network) handleStore(fileName string, callbackContact AddressTriple) {
 	data := network.RequestFile(callbackContact, fileName)
 	if data != nil {
-		//nodeID is appended to the fileName for testing
-		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: network.nodeID + fileName, Content: data}
+		//nodeID is appended to the fileName for testing if fileTest i set to true
+		if network.fileTest {
+			fileName = network.nodeID + fileName
+		}
+		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 	}
 }
 
