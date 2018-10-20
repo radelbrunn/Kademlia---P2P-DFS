@@ -9,7 +9,6 @@ import (
 )
 
 func TestKademlia_StoreData(t *testing.T) {
-
 	fileName := "11111111"
 
 	ioutil.WriteFile(fileUtilsKademlia.FileDirectory+fileName, []byte("hello world"), 0644)

@@ -226,7 +226,7 @@ func ping(address AddressTriple) error {
 	}
 	defer conn.Close()
 
-	msgID := GenerateRandID(int64(rand.Intn(100)))
+	msgID := GenerateRandID(int64(rand.Intn(100)), 160)
 	Info := &pb.REQUEST_PING{ID: "asdasd"}
 	Data := &pb.Container_RequestPing{RequestPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}

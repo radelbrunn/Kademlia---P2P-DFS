@@ -17,18 +17,16 @@ import (
 )
 
 const (
-	K             = 20
-	ALPHA         = 3
-	IDLENGTH      = 160
-	FILESIZELIMIT = 10000000000
+	K     = 20
+	ALPHA = 3
 )
 
 //Generates a Random ID, of specified length, given by constant IDLENGTH
 //The returned ID is a bitwise representation
-func GenerateRandID(seed int64) string {
+func GenerateRandID(seed int64, binLength int) string {
 	id := ""
 	rand.Seed(time.Now().UnixNano() - seed)
-	for i := 0; i < IDLENGTH; i++ {
+	for i := 0; i < binLength; i++ {
 		id += strconv.Itoa(rand.Intn(2))
 	}
 
@@ -38,7 +36,7 @@ func GenerateRandID(seed int64) string {
 //Converts a bitwise-represented ID into a HEX-represented ID
 func ConvertToHexAddr(binAddr string) string {
 	hexAddr := ""
-	for i := 0; i < IDLENGTH/4; i++ {
+	for i := 0; i < len(binAddr)/4; i++ {
 		newPart := []rune(binAddr[(i * 4) : (i*4)+4])
 		newIntPart := 0
 		for j := 0; j < 4; j++ {

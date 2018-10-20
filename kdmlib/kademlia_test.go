@@ -9,7 +9,7 @@ import (
 
 func TestKademlia_SortContacts(t *testing.T) {
 	nodeId := "11100000"
-	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
+	rt := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId)
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, true, chanFile, chanPin, fileMap)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
@@ -55,7 +55,7 @@ func TestKademlia_SortContacts(t *testing.T) {
 
 func TestKademlia_RefreshClosest(t *testing.T) {
 	nodeId := "11100000"
-	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
+	rt := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId)
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, true, chanFile, chanPin, fileMap)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)
@@ -108,7 +108,7 @@ func TestKademlia_RefreshClosest(t *testing.T) {
 
 func TestKademlia_GetNextContact_AskedAllContacts(t *testing.T) {
 	nodeId := "11100000"
-	rt := CreateAllWorkersForRoutingTable(K, IDLENGTH, 5, nodeId)
+	rt := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId)
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	nw := InitNetwork("12000", "127.0.0.1", rt, nodeId, true, true, chanFile, chanPin, fileMap)
 	testKademlia := NewKademliaInstance(nw, nodeId, ALPHA, K, rt, chanFile, fileMap)

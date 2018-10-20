@@ -13,7 +13,6 @@ import (
 
 func main() {
 	StartKademlia()
-
 }
 
 func SendAddress(ip string, port string, id string) kdmlib.AddressTriple {
@@ -35,8 +34,8 @@ func SendAddress(ip string, port string, id string) kdmlib.AddressTriple {
 }
 
 func StartKademlia() {
-	nodeId := kdmlib.GenerateRandID(int64(rand.Intn(100)))
-	rt := kdmlib.CreateAllWorkersForRoutingTable(kdmlib.K, kdmlib.IDLENGTH, 5, nodeId)
+	nodeId := kdmlib.GenerateRandID(int64(rand.Intn(100)), 160)
+	rt := kdmlib.CreateAllWorkersForRoutingTable(kdmlib.K, 160, 5, nodeId)
 
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 
