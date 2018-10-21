@@ -83,7 +83,9 @@ func (kademlia *Kademlia) handleContactAnswer(order LookupOrder, answerList []Ad
 		//If not, ask next node from the list of closest
 		if kademlia.noCloserNodeCalls > kademlia.exitThreshold {
 			fmt.Println("Contacts found (no closer contact has been found in a while)")
-			resultChannel <- kademlia.closest
+			if !IsResultClosed(resultChannel) {
+				resultChannel <- kademlia.closest
+			}
 		} else {
 			kademlia.askNextContact(order.Target, order.LookupType, lookupWorkerChannel)
 		}
@@ -123,7 +125,9 @@ func (kademlia *Kademlia) lookupWorker(lookupWorkerChannel chan LookupOrder, res
 			if err == nil {
 				if contacts == nil {
 					//If some data is found,  write to the answerChannel (i.e. "return")
-					resultChannel <- contactWithData
+					if !IsResultClosed(resultChannel) {
+						resultChannel <- contactWithData
+					}
 				} else {
 					kademlia.handleContactAnswer(order, contacts, resultChannel, lookupWorkerChannel)
 				}
@@ -138,13 +142,9 @@ func (kademlia *Kademlia) lookupWorker(lookupWorkerChannel chan LookupOrder, res
 
 		//Check if all nodes have been asked and if all nodes have responded/timed out
 		if kademlia.askedAllContacts() && len(resultChannel) == 0 {
-			switch order.LookupType {
-			case ContactLookup:
-				fmt.Println("FIND_NODE procedure, initiated by node '" + ConvertToHexAddr(kademlia.nodeID) + "' was finalized")
-			case DataLookup:
-				fmt.Println("FIND_DATA procedure, initiated by node '" + ConvertToHexAddr(kademlia.nodeID) + "' was finalized")
+			if !IsResultClosed(resultChannel) {
+				resultChannel <- kademlia.closest
 			}
-			resultChannel <- kademlia.closest
 		}
 	}
 }
@@ -197,7 +197,20 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 	}
 
 	//Start a listener function, which returns the desired answer
-	return kademlia.lookupListener(resultChannel)
+	contacts, contactWithData := kademlia.lookupListener(resultChannel)
+
+	//Close the channels when the result is retrieved
+	close(lookupWorkerChannel)
+	close(resultChannel)
+
+	switch lookupType {
+	case ContactLookup:
+		fmt.Println("FIND_NODE procedure, initiated by node '" + ConvertToHexAddr(kademlia.nodeID) + "' was finalized")
+	case DataLookup:
+		fmt.Println("FIND_DATA procedure, initiated by node '" + ConvertToHexAddr(kademlia.nodeID) + "' was finalized")
+	}
+
+	return contacts, contactWithData
 
 }
 
@@ -235,8 +248,6 @@ func (kademlia *Kademlia) storeWorker(storeWorkerChannel chan StoreOrder, result
 
 	//Execute orders from the channel
 	for order := range storeWorkerChannel {
-
-		fmt.Println("Order: [", order.Contact, " ", order.FileName, "]")
 		answer, err := kademlia.network.SendStore(order.Contact, order.FileName)
 
 		if err == nil && answer == "stored" {
@@ -311,7 +322,9 @@ func (kademlia *Kademlia) askNextContact(target string, lookupType int, lookupWo
 	nextContact := kademlia.getNextContact()
 	if nextContact != nil {
 		kademlia.askedClosest = append(kademlia.askedClosest, *nextContact)
-		lookupWorkerChannel <- LookupOrder{lookupType, *nextContact, target}
+		if !IsLookupClosed(lookupWorkerChannel) {
+			lookupWorkerChannel <- LookupOrder{lookupType, *nextContact, target}
+		}
 	}
 
 	kademlia.lock.Unlock()

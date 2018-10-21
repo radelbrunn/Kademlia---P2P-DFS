@@ -1,16 +1,12 @@
 package kdmlib
 
 import (
-	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"math/rand"
 	"net"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -120,6 +116,7 @@ func GenerateZeroID(binLength int) string {
 
 //Encodes a file name into a 160 bit ID
 //Maximum 19 characters is allowed in fileName.
+/*
 func HashKademliaID(fileName string) string {
 	f := hex.EncodeToString([]byte(fileName))
 	if len(f) > 38 {
@@ -131,6 +128,7 @@ func HashKademliaID(fileName string) string {
 	}
 	return f
 }
+*/
 
 func ComputeDistance(id1 string, id2 string) (string, error) {
 	if len(id1) != len(id2) {
@@ -167,6 +165,37 @@ func AlreadyAsked(asked []AddressTriple, c AddressTriple) bool {
 	}
 	return false
 }
+
+func PrintListOfContacts(description string, contactList []AddressTriple) {
+	fmt.Println(description)
+	for index := range contactList {
+		fmt.Println("['"+ConvertToHexAddr(contactList[index].Id)+"'", contactList[index].Ip+":"+contactList[index].Port+"]")
+	}
+}
+
+func IsResultClosed(ch <-chan interface{}) bool {
+	select {
+
+	case <-ch:
+		return true
+	default:
+	}
+
+	return false
+}
+
+func IsLookupClosed(ch <-chan LookupOrder) bool {
+	select {
+
+	case <-ch:
+		return true
+	default:
+	}
+
+	return false
+}
+
+/*
 
 func SendPostRequest(triple AddressTriple, content []byte) string {
 	req, err := http.NewRequest("POST", "http://"+triple.Ip+":8000/?fromNetwork=true", bytes.NewBuffer(content))
@@ -208,9 +237,4 @@ func SendGetRequest(triple AddressTriple, name string) []byte {
 	return nil
 }
 
-func PrintListOfContacts(description string, contactList []AddressTriple) {
-	fmt.Println(description)
-	for index := range contactList {
-		fmt.Println("['"+ConvertToHexAddr(contactList[index].Id)+"'", contactList[index].Ip+":"+contactList[index].Port+"]")
-	}
-}
+*/

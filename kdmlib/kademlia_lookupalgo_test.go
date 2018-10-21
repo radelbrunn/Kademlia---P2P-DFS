@@ -35,21 +35,21 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 		rt1.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 
 	rt2 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId2)
 	for _, e := range testContacts[0:1] {
 		rt2.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 
 	rt3 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId2)
 	for _, e := range testContacts[11:] {
 		rt3.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 
 	chanPin1, chanFile1, fileMap1 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	chanPin2, chanFile2, fileMap2 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
@@ -65,7 +65,9 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 
 	testKademlia.closest = []AddressTriple{}
 	for _, e := range testContacts {
-		testKademlia.closest = append(testKademlia.closest, e)
+		if e.Id != testKademlia.nodeID {
+			testKademlia.closest = append(testKademlia.closest, e)
+		}
 	}
 
 	testKademlia.sortContacts(targetContact.Id)
@@ -107,14 +109,14 @@ func TestKademlia_LookupAlgorithm_160(t *testing.T) {
 		rt1.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 
 	rt2 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId2)
 	for _, e := range testContacts[2:7] {
 		rt2.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 
 	rt3 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId2)
 	for _, e := range testContacts[2:] {

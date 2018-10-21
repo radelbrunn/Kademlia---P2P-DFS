@@ -88,14 +88,13 @@ func TestKademlia_LookupDataSuccess(t *testing.T) {
 	fileName := "11111111"
 	ioutil.WriteFile(fileUtilsKademlia.FileDirectory+fileName, []byte("hello world"), 0644)
 
-	nodeId1 := "00000011"
-	port1 := "12002"
+	nodeId1 := "11111001"
+	port1 := "12017"
 	nodeId2 := "00000100"
 	port2 := "12003"
 
 	testContacts := []AddressTriple{
-		{"127.0.0.1", "12003", "00000100"},
-		{"127.0.0.1", "12002", "00000011"},
+		{"127.0.0.1", "12003", "00000100"}, {"127.0.0.1", "12002", "00000011"},
 		{"127.0.0.1", "12004", "01100000"}, {"127.0.0.1", "12005", "11110000"},
 		{"127.0.0.1", "12006", "11010000"}, {"127.0.0.1", "12007", "11111101"},
 		{"127.0.0.1", "12008", "01110000"}, {"127.0.0.1", "12009", "11110001"},
@@ -114,7 +113,7 @@ func TestKademlia_LookupDataSuccess(t *testing.T) {
 	time.Sleep(time.Second * 1)
 
 	rt2 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId2)
-	for _, e := range testContacts[1:9] {
+	for _, e := range testContacts[1:] {
 		rt2.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
@@ -134,6 +133,11 @@ func TestKademlia_LookupDataSuccess(t *testing.T) {
 
 	if dataReturn == nil {
 		t.Error("Expected to get data back...")
+		t.Fail()
+	}
+
+	if string(dataReturn) != "hello world" {
+		t.Error("Expected to get data back 'hello world, got", string(dataReturn))
 		t.Fail()
 	}
 
@@ -183,6 +187,11 @@ func TestKademlia_LookupData_160(t *testing.T) {
 	dataReturn := testKademlia.LookupData(fileName)
 
 	fmt.Println("Data returned: ", string(dataReturn))
+
+	if string(dataReturn) != "hello world" {
+		t.Error("Expected to get data back 'hello world, got", string(dataReturn))
+		t.Fail()
+	}
 
 	os.Remove(fileUtilsKademlia.FileDirectory + fileName)
 }
