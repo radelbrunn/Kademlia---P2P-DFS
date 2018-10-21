@@ -1,6 +1,7 @@
 package kdmlib
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -62,5 +63,14 @@ func TestConvertToUDPAddr(t *testing.T) {
 
 	if addr.String() != t1.Ip+":"+t1.Port {
 		t.Error("Expected", t1.Ip, ":", t1.Port, ", got ", addr.String())
+	}
+}
+
+func TestGenerateZeroID(t *testing.T) {
+	zeroID := GenerateZeroID(160)
+	hexZero := ConvertToHexAddr(zeroID)
+
+	if len(hexZero) != 40 {
+		fmt.Println("Wrong ID length")
 	}
 }
