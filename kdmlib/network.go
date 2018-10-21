@@ -36,15 +36,17 @@ type Network struct {
 	fileMap        fileUtilsKademlia.FileMap
 	udpConn        net.PacketConn
 	tcpConn        net.Listener
+	fileTest       bool
 }
 
 //Initializes necessary variables and structs of the network, starts a UDP and a TCP server.
-func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bool, fileChannel chan fileUtilsKademlia.Order, pinnerChannel chan fileUtilsKademlia.Order, fileMap fileUtilsKademlia.FileMap) *Network {
+func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, noNetworkTest bool, fileTest bool, fileChannel chan fileUtilsKademlia.Order, pinnerChannel chan fileUtilsKademlia.Order, fileMap fileUtilsKademlia.FileMap) *Network {
 	network := &Network{}
 	network.rt = rt
 	network.port = port
 	network.ip = ip
 	network.nodeID = nodeID
+	network.fileTest = fileTest
 
 	network.fileChannel = fileChannel
 	network.pinnerChannel = pinnerChannel
@@ -54,7 +56,7 @@ func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, test bo
 	network.tcpPacketsChan = make(chan tcpPacketAndInfo, 500)
 
 	//Set test flag to true for testing puposes
-	if !test {
+	if !noNetworkTest {
 		udpBuffer := make([]byte, 4096)
 		tcpBuffer := make([]byte, 4096)
 
@@ -87,6 +89,7 @@ type udpPacketAndInfo struct {
 
 //Launch the UDP server on port "port", with the specified amount of workers.
 func (network *Network) UDPServer(numberOfWorkers int, buffer []byte) {
+	fmt.Println("UDP connection initiated for node '" + ConvertToHexAddr(network.nodeID) + "' on " + network.ip + ":" + network.port)
 
 	for i := 0; i < numberOfWorkers; i++ {
 		go network.UDPConnectionWorker()
@@ -118,6 +121,7 @@ type tcpPacketAndInfo struct {
 
 //Launch the TCP server on port "port", with the specified amount of workers.
 func (network *Network) TCPServer(numberOfWorkers int, buffer []byte) {
+	fmt.Println("TCP connection initiated for node '" + ConvertToHexAddr(network.nodeID) + "' on " + network.ip + ":" + network.port)
 
 	for i := 0; i < numberOfWorkers; i++ {
 		go network.TCPConnectionWorker()
@@ -131,8 +135,6 @@ func (network *Network) TCPServer(numberOfWorkers int, buffer []byte) {
 			fmt.Println("Error: ", err)
 			os.Exit(1)
 		}
-		fmt.Println("Client connected")
-
 		network.tcpPacketsChan <- tcpPacketAndInfo{connection: conn, packet: buffer}
 	}
 }
@@ -152,11 +154,9 @@ func (network *Network) TCPConnectionWorker() {
 func sendFileTCP(conn net.Conn, fileName string) {
 	defer conn.Close()
 
-	file := fileUtilsKademlia.ReadFileFromOS(fileName)
+	file := fileUtilsKademlia.ReadFileFromOS(ConvertToHexAddr(fileName))
 	if file != nil {
-		if len(file) < FILESIZELIMIT {
-			conn.Write(file)
-		}
+		conn.Write(file)
 	}
 }
 
@@ -164,9 +164,11 @@ func sendFileTCP(conn net.Conn, fileName string) {
 func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 	switch container.REQUEST_ID {
 	case Ping:
+		fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' received a PING RPC from node '" + ConvertToHexAddr(container.ID) + "'")
 		network.udpConn.WriteTo([]byte("pong"), addr)
 		break
 	case FindContact:
+		fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' received a FIND_NODE RPC from node '" + ConvertToHexAddr(container.ID) + "'")
 		packet, err := proto.Marshal(network.handleFindContact(container.GetRequestContact().ID))
 		if err == nil {
 			network.udpConn.WriteTo(packet, addr)
@@ -175,6 +177,7 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 		}
 		break
 	case FindData:
+		fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' received a FIND_DATA RPC from node '" + ConvertToHexAddr(container.ID) + "'")
 		packet, err := proto.Marshal(network.handleFindData(container.GetRequestData().KEY))
 		if err == nil {
 			network.udpConn.WriteTo(packet, addr)
@@ -182,6 +185,7 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 			fmt.Println("something went wrong")
 		}
 	case Store:
+		fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' received a STORE RPC from node '" + ConvertToHexAddr(container.ID) + "'")
 		network.handleStore(container.GetRequestStore().KEY, AddressTriple{addr.(*net.UDPAddr).IP.String(), container.PORT, container.ID})
 		network.udpConn.WriteTo([]byte("stored"), addr)
 	}
@@ -192,14 +196,17 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 func (network *Network) handleStore(fileName string, callbackContact AddressTriple) {
 	data := network.RequestFile(callbackContact, fileName)
 	if data != nil {
-		//nodeID is appended to the fileName for testing
-		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: network.nodeID + fileName, Content: data}
+		//nodeID is appended to the fileName for testing if fileTest i set to true
+		if network.fileTest {
+			fileName = network.nodeID + fileName
+		}
+		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: ConvertToHexAddr(fileName), Content: data}
 	}
 }
 
 //Check if data is present and returns it if it is. Returns a list of contacts if not present.
 func (network *Network) handleFindData(DataID string) *pb.Container {
-	if network.fileMap.IsPresent(DataID) {
+	if network.fileMap.IsPresent(ConvertToHexAddr(DataID)) {
 		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: network.nodeID, Attachment: nil}
 		return Container
 	} else {
@@ -245,7 +252,8 @@ func sendPacket(ip string, port string, packet []byte) ([]byte, error) {
 
 //Send STORE request.
 func (network *Network) SendStore(toContact AddressTriple, fileName string) (string, error) {
-	msgID := GenerateRandID(int64(rand.Intn(100)))
+	fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' is sending a STORE RPC to node '" + ConvertToHexAddr(toContact.Id) + "'")
+	msgID := GenerateRandID(int64(rand.Intn(100)), 160)
 	Info := &pb.REQUEST_STORE{KEY: fileName, VALUE: nil}
 	Data := &pb.Container_RequestStore{RequestStore: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Store, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
@@ -261,7 +269,8 @@ func (network *Network) SendStore(toContact AddressTriple, fileName string) (str
 
 //Send FIND_NODE request, return an AddressTriple slice.
 func (network *Network) SendFindNode(toContact AddressTriple, targetID string) ([]AddressTriple, error) {
-	msgID := GenerateRandID(int64(rand.Intn(100)))
+	fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' is sending a FIND_NODE RPC to node '" + ConvertToHexAddr(toContact.Id) + "'")
+	msgID := GenerateRandID(int64(rand.Intn(100)), 160)
 	Info := &pb.REQUEST_CONTACT{ID: targetID}
 	Data := &pb.Container_RequestContact{RequestContact: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindContact, MSG_ID: msgID, ID: network.nodeID, PORT: network.port, Attachment: Data}
@@ -287,7 +296,8 @@ func (network *Network) SendFindNode(toContact AddressTriple, targetID string) (
 //If data is found, it's details are returned in a AddressTriple, which can later be used to fetch file via TCP.
 //If data is not located, a slice of AddressTriples is returned, containing closest contacts (equal to the result of a FIND_NODE RPC).
 func (network *Network) SendFindData(toContact AddressTriple, targetID string) (AddressTriple, []AddressTriple, error) {
-	msgID := GenerateRandID(int64(rand.Intn(100)))
+	fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' is sending a FIND_DATA RPC to node '" + ConvertToHexAddr(toContact.Id) + "'")
+	msgID := GenerateRandID(int64(rand.Intn(100)), 160)
 	Info := &pb.REQUEST_DATA{KEY: targetID}
 	Data := &pb.Container_RequestData{RequestData: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: FindData, MSG_ID: msgID, ID: network.nodeID, Attachment: Data, PORT: network.port}
@@ -311,7 +321,6 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 		return AddressTriple{}, result, err
 
 	} else if object.REQUEST_ID == FindData {
-		fmt.Println("I have the data!", toContact)
 		return toContact, nil, err
 	}
 
@@ -320,6 +329,7 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 
 //Request a file via TCP.
 func (network *Network) RequestFile(toContact AddressTriple, fileName string) []byte {
+	fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' is requesting file '" + ConvertToHexAddr(fileName) + "' from node '" + ConvertToHexAddr(toContact.Id) + "' via TCP")
 	conn, err := net.Dial("tcp", toContact.Ip+":"+toContact.Port)
 	if err != nil {
 		panic(err)

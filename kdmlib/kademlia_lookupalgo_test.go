@@ -2,6 +2,7 @@ package kdmlib
 
 import (
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
+	"math/rand"
 	"testing"
 	"time"
 )
@@ -34,29 +35,29 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 		rt1.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 
 	rt2 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId2)
 	for _, e := range testContacts[0:1] {
 		rt2.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 
 	rt3 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId2)
 	for _, e := range testContacts[11:] {
 		rt3.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 
 	chanPin1, chanFile1, fileMap1 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	chanPin2, chanFile2, fileMap2 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	chanPin3, chanFile3, fileMap3 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 
-	InitNetwork(port1, "127.0.0.1", rt1, nodeId1, false, chanFile1, chanPin1, fileMap1)
-	InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false, chanFile3, chanPin3, fileMap3)
-	nw2 := InitNetwork(port2, "127.0.0.1", rt2, nodeId2, true, chanFile2, chanPin2, fileMap2)
+	InitNetwork(port1, "127.0.0.1", rt1, nodeId1, false, true, chanFile1, chanPin1, fileMap1)
+	InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false, true, chanFile3, chanPin3, fileMap3)
+	nw2 := InitNetwork(port2, "127.0.0.1", rt2, nodeId2, true, true, chanFile2, chanPin2, fileMap2)
 
 	testKademlia := NewKademliaInstance(nw2, nodeId2, ALPHA, K, rt2, chanFile2, fileMap2)
 
@@ -64,7 +65,9 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 
 	testKademlia.closest = []AddressTriple{}
 	for _, e := range testContacts {
-		testKademlia.closest = append(testKademlia.closest, e)
+		if e.Id != testKademlia.nodeID {
+			testKademlia.closest = append(testKademlia.closest, e)
+		}
 	}
 
 	testKademlia.sortContacts(targetContact.Id)
@@ -74,6 +77,69 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 			t.Error("Difference in slices")
 			t.Fail()
 		}
+	}
+
+	if contactWithData.Id != "" {
+		t.Error("Did not expect a data return")
+		t.Fail()
+	}
+}
+
+func TestKademlia_LookupAlgorithm_160(t *testing.T) {
+
+	time.Sleep(time.Second * 2)
+
+	testContacts := []AddressTriple{
+		{"127.0.0.1", "22000", GenerateRandID(int64(rand.Intn(100)), 160)}, {"127.0.0.1", "22001", GenerateRandID(int64(rand.Intn(100)), 160)},
+		{"127.0.0.1", "22002", GenerateRandID(int64(rand.Intn(100)), 160)}, {"127.0.0.1", "22003", GenerateRandID(int64(rand.Intn(100)), 160)},
+		{"127.0.0.1", "22004", GenerateRandID(int64(rand.Intn(100)), 160)}, {"127.0.0.1", "22005", GenerateRandID(int64(rand.Intn(100)), 160)},
+		{"127.0.0.1", "22006", GenerateRandID(int64(rand.Intn(100)), 160)}, {"127.0.0.1", "22007", GenerateRandID(int64(rand.Intn(100)), 160)}}
+
+	nodeId1 := testContacts[0].Id
+	port1 := testContacts[0].Port
+	nodeId2 := testContacts[4].Id
+	port2 := testContacts[4].Port
+	nodeId3 := testContacts[6].Id
+	port3 := testContacts[6].Port
+
+	targetContact := testContacts[7]
+
+	rt1 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId1)
+	for _, e := range testContacts[1:5] {
+		rt1.GiveOrder(OrderForRoutingTable{ADD, e, false})
+	}
+
+	time.Sleep(time.Second * 2)
+
+	rt2 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId2)
+	for _, e := range testContacts[2:7] {
+		rt2.GiveOrder(OrderForRoutingTable{ADD, e, false})
+	}
+
+	time.Sleep(time.Second * 2)
+
+	rt3 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId2)
+	for _, e := range testContacts[2:] {
+		rt3.GiveOrder(OrderForRoutingTable{ADD, e, false})
+	}
+
+	time.Sleep(time.Second * 1)
+
+	chanPin1, chanFile1, fileMap1 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
+	chanPin2, chanFile2, fileMap2 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
+	chanPin3, chanFile3, fileMap3 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
+
+	nw1 := InitNetwork(port1, "127.0.0.1", rt1, nodeId1, false, true, chanFile1, chanPin1, fileMap1)
+	InitNetwork(port2, "127.0.0.1", rt2, nodeId2, false, true, chanFile2, chanPin2, fileMap2)
+	InitNetwork(port3, "127.0.0.1", rt3, nodeId3, false, true, chanFile3, chanPin3, fileMap3)
+
+	testKademlia := NewKademliaInstance(nw1, nodeId1, ALPHA, K, rt1, chanFile1, fileMap1)
+
+	contacts, contactWithData := testKademlia.LookupAlgorithm(targetContact.Id, ContactLookup)
+
+	if len(contacts) != 7 {
+		t.Error("Expected to get 7 contacts back, got", len(contacts))
+		t.Fail()
 	}
 
 	if contactWithData.Id != "" {

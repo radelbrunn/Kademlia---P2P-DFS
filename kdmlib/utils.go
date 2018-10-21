@@ -1,34 +1,28 @@
 package kdmlib
 
 import (
-	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"math/rand"
 	"net"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	K             = 20
-	ALPHA         = 3
-	IDLENGTH      = 160
-	FILESIZELIMIT = 10000000000
+	K     = 20
+	ALPHA = 3
 )
 
 //Generates a Random ID, of specified length, given by constant IDLENGTH
 //The returned ID is a bitwise representation
-func GenerateRandID(seed int64) string {
+func GenerateRandID(seed int64, binLength int) string {
 	id := ""
 	rand.Seed(time.Now().UnixNano() - seed)
-	for i := 0; i < IDLENGTH; i++ {
+	for i := 0; i < binLength; i++ {
 		id += strconv.Itoa(rand.Intn(2))
 	}
 
@@ -38,7 +32,7 @@ func GenerateRandID(seed int64) string {
 //Converts a bitwise-represented ID into a HEX-represented ID
 func ConvertToHexAddr(binAddr string) string {
 	hexAddr := ""
-	for i := 0; i < IDLENGTH/4; i++ {
+	for i := 0; i < len(binAddr)/4; i++ {
 		newPart := []rune(binAddr[(i * 4) : (i*4)+4])
 		newIntPart := 0
 		for j := 0; j < 4; j++ {
@@ -112,8 +106,17 @@ func GenerateIDFromHex(hexAddr string) string {
 	return binAddr
 }
 
+func GenerateZeroID(binLength int) string {
+	zeroString := ""
+	for i := 0; i < binLength; i++ {
+		zeroString += "0"
+	}
+	return zeroString
+}
+
 //Encodes a file name into a 160 bit ID
 //Maximum 19 characters is allowed in fileName.
+/*
 func HashKademliaID(fileName string) string {
 	f := hex.EncodeToString([]byte(fileName))
 	if len(f) > 38 {
@@ -125,6 +128,7 @@ func HashKademliaID(fileName string) string {
 	}
 	return f
 }
+*/
 
 func ComputeDistance(id1 string, id2 string) (string, error) {
 	if len(id1) != len(id2) {
@@ -161,6 +165,37 @@ func AlreadyAsked(asked []AddressTriple, c AddressTriple) bool {
 	}
 	return false
 }
+
+func PrintListOfContacts(description string, contactList []AddressTriple) {
+	fmt.Println(description)
+	for index := range contactList {
+		fmt.Println("['"+ConvertToHexAddr(contactList[index].Id)+"'", contactList[index].Ip+":"+contactList[index].Port+"]")
+	}
+}
+
+func IsResultClosed(ch <-chan interface{}) bool {
+	select {
+
+	case <-ch:
+		return true
+	default:
+	}
+
+	return false
+}
+
+func IsLookupClosed(ch <-chan LookupOrder) bool {
+	select {
+
+	case <-ch:
+		return true
+	default:
+	}
+
+	return false
+}
+
+/*
 
 func SendPostRequest(triple AddressTriple, content []byte) string {
 	req, err := http.NewRequest("POST", "http://"+triple.Ip+":8000/?fromNetwork=true", bytes.NewBuffer(content))
@@ -201,3 +236,5 @@ func SendGetRequest(triple AddressTriple, name string) []byte {
 	}
 	return nil
 }
+
+*/

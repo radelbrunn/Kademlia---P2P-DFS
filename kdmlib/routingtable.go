@@ -200,7 +200,7 @@ func sendToPinger(routingTable routingTableAndCache, index int, order OrderForRo
 func bumpElement(routingTable routingTableAndCache, index int, order OrderForRoutingTable) {
 	for ele := (*(routingTable.routingTable))[index].Front(); ele != nil; ele = ele.Next() {
 		if ele.Value.(AddressTriple).Id == order.Target.Id {
-			fmt.Println("already present so pushing this value")
+			//fmt.Println("already present so pushing this value")
 			(*(routingTable.routingTable))[index].MoveToFront(ele)
 			break
 		}
@@ -226,7 +226,7 @@ func ping(address AddressTriple) error {
 	}
 	defer conn.Close()
 
-	msgID := GenerateRandID(int64(rand.Intn(100)))
+	msgID := GenerateRandID(int64(rand.Intn(100)), 160)
 	Info := &pb.REQUEST_PING{ID: "asdasd"}
 	Data := &pb.Container_RequestPing{RequestPing: Info}
 	Container := &pb.Container{REQUEST_TYPE: Request, REQUEST_ID: Ping, MSG_ID: msgID, Attachment: Data}
