@@ -3,6 +3,7 @@ package kdmlib
 import (
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
 	"fmt"
+	"strconv"
 	"sync"
 )
 
@@ -61,11 +62,11 @@ func (kademlia *Kademlia) lookupListener(resultChannel chan interface{}) ([]Addr
 			//1. Successful LookupContact
 			//2. Successful LookupData, that was not able to locate data
 			case []AddressTriple:
-				PrintListOfContacts("RESULT: ", answer)
+				PrintListOfContacts("CLOSEST CONTACTS TO NODE '"+ConvertToHexAddr(kademlia.nodeID)+"' ARE SUCCESSFULLY LOCATED!: ", answer)
 				return answer, AddressTriple{}
 				//A slice of bytes is only written to the channel in case the successful LookupData was able to found the file
 			case AddressTriple:
-				fmt.Println("Contact with Data: '"+ConvertToHexAddr(answer.Id)+"'", answer.Ip+":"+answer.Port)
+				fmt.Println("CONTACT WITH DATA: '"+ConvertToHexAddr(answer.Id)+"'", answer.Ip+":"+answer.Port)
 				return nil, answer
 			}
 		}
@@ -75,7 +76,7 @@ func (kademlia *Kademlia) lookupListener(resultChannel chan interface{}) ([]Addr
 //Performs operations when the slice of contacts comes back from the network.
 func (kademlia *Kademlia) handleContactAnswer(order LookupOrder, answerList []AddressTriple, resultChannel chan interface{}, lookupWorkerChannel chan LookupOrder) {
 	if len(answerList) != 0 {
-		PrintListOfContacts("Got some contacts back: ", answerList)
+		PrintListOfContacts("Got some contacts back from node '"+ConvertToHexAddr(order.Contact.Id)+"': ", answerList)
 		//Refresh the list of closest contacts, according to the answer
 		kademlia.refreshClosest(answerList, order.Target)
 
@@ -156,6 +157,8 @@ func (kademlia *Kademlia) lookupWorker(lookupWorkerChannel chan LookupOrder, res
 //Supports two lookupTypes: ContactLookup and DataLookup
 func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]AddressTriple, AddressTriple) {
 
+	fmt.Println("Node '" + ConvertToHexAddr(kademlia.nodeID) + "' has initiated Lookup Algorithm with parameter: " + strconv.Itoa(lookupType))
+
 	//Instantiate channels for lookupWorkers and answers
 	lookupWorkerChannel := make(chan LookupOrder, kademlia.alpha)
 	resultChannel := make(chan interface{}, kademlia.k)
@@ -170,7 +173,7 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 		kademlia.closest = append(kademlia.closest, e.Triple)
 	}
 
-	PrintListOfContacts("RT: ", kademlia.closest)
+	PrintListOfContacts("ROUTING TABLE OF NODE '"+ConvertToHexAddr(kademlia.nodeID)+"': ", kademlia.closest)
 
 	//Check if the list of closest is empty
 	//If true, return nil
@@ -224,7 +227,7 @@ func (kademlia *Kademlia) LookupData(fileHash string) []byte {
 	if contactWithData.Id != "" {
 		data := kademlia.network.RequestFile(contactWithData, fileHash)
 		if data != nil {
-			kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileHash, Content: data}
+			kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: ConvertToHexAddr(fileHash), Content: data}
 			fmt.Println("File located and downloaded")
 			return data
 		} else {
@@ -251,8 +254,10 @@ func (kademlia *Kademlia) storeWorker(storeWorkerChannel chan StoreOrder, result
 		answer, err := kademlia.network.SendStore(order.Contact, order.FileName)
 
 		if err == nil && answer == "stored" {
+			fmt.Println("STORE RPC from node '" + ConvertToHexAddr(kademlia.nodeID) + "' to node '" + ConvertToHexAddr(order.Contact.Id) + "' SUCCEEDED")
 			resultChannel <- true
 		} else {
+			fmt.Println("STORE RPC from node '" + ConvertToHexAddr(kademlia.nodeID) + "' to node '" + ConvertToHexAddr(order.Contact.Id) + "' FAILED")
 			resultChannel <- false
 		}
 	}
@@ -263,15 +268,11 @@ func (kademlia *Kademlia) storeListener(resultChannel chan bool, expectedNumAnsw
 	answersReturned := 0
 	for {
 		select {
-		case answer := <-resultChannel:
+		case <-resultChannel:
 			answersReturned++
-			if answer == true {
-				fmt.Println("STORE succeeded")
-			} else {
-				fmt.Println("STORE failed")
-			}
 			//Return when all answers are received
 			if answersReturned == expectedNumAnswers {
+				fmt.Println("STORE procedure, initiated by node '" + ConvertToHexAddr(kademlia.nodeID) + "' was finalized")
 				return
 			}
 		}
@@ -285,7 +286,7 @@ func (kademlia *Kademlia) StoreData(fileName string) {
 
 	//Check whether the file exists.
 	//If yes, get the list of closest and send the file to these nodes.
-	if kademlia.network.fileMap.IsPresent(fileName) {
+	if kademlia.network.fileMap.IsPresent(ConvertToHexAddr(fileName)) {
 		contacts, _ := kademlia.LookupAlgorithm(fileNameHash, ContactLookup)
 		if contacts != nil {
 

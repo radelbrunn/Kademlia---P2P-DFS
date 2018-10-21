@@ -154,7 +154,7 @@ func (network *Network) TCPConnectionWorker() {
 func sendFileTCP(conn net.Conn, fileName string) {
 	defer conn.Close()
 
-	file := fileUtilsKademlia.ReadFileFromOS(fileName)
+	file := fileUtilsKademlia.ReadFileFromOS(ConvertToHexAddr(fileName))
 	if file != nil {
 		conn.Write(file)
 	}
@@ -200,13 +200,13 @@ func (network *Network) handleStore(fileName string, callbackContact AddressTrip
 		if network.fileTest {
 			fileName = network.nodeID + fileName
 		}
-		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
+		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: ConvertToHexAddr(fileName), Content: data}
 	}
 }
 
 //Check if data is present and returns it if it is. Returns a list of contacts if not present.
 func (network *Network) handleFindData(DataID string) *pb.Container {
-	if network.fileMap.IsPresent(DataID) {
+	if network.fileMap.IsPresent(ConvertToHexAddr(DataID)) {
 		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: network.nodeID, Attachment: nil}
 		return Container
 	} else {
@@ -314,7 +314,6 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 	proto.Unmarshal(answer, object)
 
 	if object.REQUEST_ID == FindContact {
-		fmt.Println("Contact: '" + ConvertToHexAddr(object.ID) + "' is sending back CONTACTS!")
 		result := make([]AddressTriple, len(object.GetReturnContacts().ContactInfo))
 		for i := 0; i < len(object.GetReturnContacts().ContactInfo); i++ {
 			result[i] = AddressTriple{object.GetReturnContacts().ContactInfo[i].IP, object.GetReturnContacts().ContactInfo[i].PORT, object.GetReturnContacts().ContactInfo[i].ID}
@@ -322,7 +321,6 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 		return AddressTriple{}, result, err
 
 	} else if object.REQUEST_ID == FindData {
-		fmt.Println("Contact: '" + ConvertToHexAddr(object.ID) + "' is sending back its SIGNATURE!")
 		return toContact, nil, err
 	}
 
@@ -331,7 +329,7 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 
 //Request a file via TCP.
 func (network *Network) RequestFile(toContact AddressTriple, fileName string) []byte {
-	fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' is requesting file " + fileName + " from node '" + ConvertToHexAddr(toContact.Id) + "' via TCP")
+	fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' is requesting file '" + ConvertToHexAddr(fileName) + "' from node '" + ConvertToHexAddr(toContact.Id) + "' via TCP")
 	conn, err := net.Dial("tcp", toContact.Ip+":"+toContact.Port)
 	if err != nil {
 		panic(err)
