@@ -314,6 +314,7 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 	proto.Unmarshal(answer, object)
 
 	if object.REQUEST_ID == FindContact {
+		fmt.Println("Contact: '" + ConvertToHexAddr(object.ID) + "' is sending back CONTACTS!")
 		result := make([]AddressTriple, len(object.GetReturnContacts().ContactInfo))
 		for i := 0; i < len(object.GetReturnContacts().ContactInfo); i++ {
 			result[i] = AddressTriple{object.GetReturnContacts().ContactInfo[i].IP, object.GetReturnContacts().ContactInfo[i].PORT, object.GetReturnContacts().ContactInfo[i].ID}
@@ -321,6 +322,7 @@ func (network *Network) SendFindData(toContact AddressTriple, targetID string) (
 		return AddressTriple{}, result, err
 
 	} else if object.REQUEST_ID == FindData {
+		fmt.Println("Contact: '" + ConvertToHexAddr(object.ID) + "' is sending back its SIGNATURE!")
 		return toContact, nil, err
 	}
 

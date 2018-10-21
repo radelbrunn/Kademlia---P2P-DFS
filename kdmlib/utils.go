@@ -110,6 +110,14 @@ func GenerateIDFromHex(hexAddr string) string {
 	return binAddr
 }
 
+func GenerateZeroID(binLength int) string {
+	zeroString := ""
+	for i := 0; i < binLength; i++ {
+		zeroString += "0"
+	}
+	return zeroString
+}
+
 //Encodes a file name into a 160 bit ID
 //Maximum 19 characters is allowed in fileName.
 func HashKademliaID(fileName string) string {
@@ -198,4 +206,11 @@ func SendGetRequest(triple AddressTriple, name string) []byte {
 		}
 	}
 	return nil
+}
+
+func PrintListOfContacts(description string, contactList []AddressTriple) {
+	fmt.Println(description)
+	for index := range contactList {
+		fmt.Println("['"+ConvertToHexAddr(contactList[index].Id)+"'", contactList[index].Ip+":"+contactList[index].Port+"]")
+	}
 }
