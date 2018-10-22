@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	StartKademlia(false)
+	StartKademlia(true)
 }
 
 func SendAddress(ip string, port string, id string) kdmlib.AddressTriple {
@@ -50,7 +50,7 @@ func GetOutboundIP(isDocker bool) string {
 
 		return localAddr.IP.String()
 	}else{
-		cmd := exec.Command("hostname","-I")
+		cmd := exec.Command("hostname","-i")
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		err := cmd.Run()
