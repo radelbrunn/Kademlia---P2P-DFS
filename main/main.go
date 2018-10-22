@@ -80,5 +80,11 @@ func StartKademlia(isContainer bool) {
 	}
 	nw := kdmlib.InitNetwork(port, ip, rt, nodeId, false, false, chanFile, chanPin, fileMap)
 	kdm := kdmlib.NewKademliaInstance(nw, nodeId, kdmlib.ALPHA, kdmlib.K, rt, chanFile, fileMap)
+	if firstNode.Id != nodeId && firstNode.Id != ""{
+		contacts , _:= kdm.LookupAlgorithm(nodeId,kdmlib.ContactLookup)
+		for _, j := range contacts{
+			rt.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD,j,false})
+		}
+	}
 	restApi.LaunchRestAPI(fileMap, chanFile, chanPin, *kdm)
 }
