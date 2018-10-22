@@ -12,10 +12,12 @@ import (
 	"time"
 	"net"
 	"log"
+	"os/exec"
+	"bytes"
 )
 
 func main() {
-	StartKademlia()
+	StartKademlia(true)
 }
 
 func SendAddress(ip string, port string, id string) kdmlib.AddressTriple {
@@ -36,26 +38,39 @@ func SendAddress(ip string, port string, id string) kdmlib.AddressTriple {
 	return kdmlib.AddressTriple{}
 }
 
-func GetOutboundIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		log.Fatal(err)
+func GetOutboundIP(isDocker bool) string {
+	if !isDocker{
+		conn, err := net.Dial("udp", "8.8.8.8:80")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer conn.Close()
+
+		localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+		return localAddr.IP.String()
+	}else{
+		cmd := exec.Command("hostname","-i")
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		err := cmd.Run()
+		if err!= nil {
+			fmt.Println("error while executing 'hostname -I'")
+			return ""
+		}
+		ip := out.String()
+		return strings.Replace(ip,"\n","",-1)
 	}
-	defer conn.Close()
-
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-
-	return localAddr.IP.String()
 }
 
-func StartKademlia() {
+func StartKademlia(isContainer bool) {
 	nodeId := kdmlib.GenerateRandID(int64(rand.Intn(100)), 160)
 	rt := kdmlib.CreateAllWorkersForRoutingTable(kdmlib.K, 160, 5, nodeId)
 
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 
 	port := "12000"
-	ip := GetOutboundIP()
+	ip := GetOutboundIP(isContainer)
 
 	firstNode := SendAddress(ip, port, nodeId)
 	fmt.Println(firstNode)
