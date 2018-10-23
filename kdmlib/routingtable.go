@@ -60,6 +60,9 @@ func (routing routingTableAndCache) FindKClosest(id string) []TripleAndDistance 
 	k := routing.k
 	if len(id) != routing.idLength {
 		fmt.Println("the id that you provided has a wrong size")
+		fmt.Println(len(id))
+		fmt.Println(id)
+		fmt.Println(routing.idLength)
 		return nil
 	}
 	nodes := make([]TripleAndDistance, len(id)*k)

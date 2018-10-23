@@ -154,7 +154,7 @@ func (network *Network) TCPConnectionWorker() {
 func sendFileTCP(conn net.Conn, fileName string) {
 	defer conn.Close()
 
-	file := fileUtilsKademlia.ReadFileFromOS(ConvertToHexAddr(fileName))
+	file := fileUtilsKademlia.ReadFileFromOS(fileName)
 	if file != nil {
 		conn.Write(file)
 	}
@@ -179,6 +179,7 @@ func (network *Network) requestHandler(container *pb.Container, addr net.Addr) {
 	case FindData:
 		fmt.Println("Node '" + ConvertToHexAddr(network.nodeID) + "' received a FIND_DATA RPC from node '" + ConvertToHexAddr(container.ID) + "'")
 		packet, err := proto.Marshal(network.handleFindData(container.GetRequestData().KEY))
+
 		if err == nil {
 			network.udpConn.WriteTo(packet, addr)
 		} else {
@@ -206,10 +207,13 @@ func (network *Network) handleStore(fileName string, callbackContact AddressTrip
 
 //Check if data is present and returns it if it is. Returns a list of contacts if not present.
 func (network *Network) handleFindData(DataID string) *pb.Container {
-	if network.fileMap.IsPresent(ConvertToHexAddr(DataID)) {
+	fmt.Println("entered handleFindData")
+	if network.fileMap.IsPresent(DataID) {
+		fmt.Println("found file locally")
 		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: network.nodeID, Attachment: nil}
 		return Container
 	} else {
+		fmt.Println("didnt found file locally")
 		return network.handleFindContact(DataID)
 	}
 }
@@ -338,6 +342,7 @@ func (network *Network) RequestFile(toContact AddressTriple, fileName string) []
 	conn.Write([]byte(fileName))
 
 	var buf bytes.Buffer
+
 	io.Copy(&buf, conn)
 
 	return buf.Bytes()

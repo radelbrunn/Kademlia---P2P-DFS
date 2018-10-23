@@ -88,8 +88,8 @@ func (dependencies RestDependencies) receiveFile(w http.ResponseWriter, r *http.
 		for l := len(str2); l < 8; l++ {
 			str2 = "0" + str2
 		}
-		fmt.Println(str2)
-		fmt.Println(len(str2))
+		//fmt.Println(str2)
+		//fmt.Println(len(str2))
 		stringHash = stringHash + str2
 	}
 

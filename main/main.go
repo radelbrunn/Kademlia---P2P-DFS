@@ -86,5 +86,7 @@ func StartKademlia(isContainer bool) {
 			rt.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD,j,false})
 		}
 	}
+	fmt.Println("nodes in routing table:")
+	fmt.Println(rt.FindKClosest(firstNode.Id))
 	restApi.LaunchRestAPI(fileMap, chanFile, chanPin, *kdm)
 }

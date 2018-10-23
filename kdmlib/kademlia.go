@@ -202,6 +202,8 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 	//Start a listener function, which returns the desired answer
 	contacts, contactWithData := kademlia.lookupListener(resultChannel)
 
+
+
 	//Close the channels when the result is retrieved
 	close(lookupWorkerChannel)
 	close(resultChannel)
@@ -211,6 +213,12 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 		fmt.Println("FIND_NODE procedure, initiated by node '" + ConvertToHexAddr(kademlia.nodeID) + "' was finalized")
 	case DataLookup:
 		fmt.Println("FIND_DATA procedure, initiated by node '" + ConvertToHexAddr(kademlia.nodeID) + "' was finalized")
+		if len(contactWithData.Id)!=0 {
+
+			fmt.Println("contact which has file has id " + ConvertToHexAddr(contactWithData.Id))
+		}else{
+			fmt.Println("no contact with data found")
+		}
 	}
 
 	return contacts, contactWithData
@@ -224,10 +232,10 @@ func (kademlia *Kademlia) LookupData(fileHash string) []byte {
 	_, contactWithData := kademlia.LookupAlgorithm(fileHash, DataLookup)
 
 	//If yes, download the file via TCP and store it locally.
-	if contactWithData.Id != "" {
+	if contactWithData.Id != ""  {
 		data := kademlia.network.RequestFile(contactWithData, fileHash)
 		if data != nil {
-			kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: ConvertToHexAddr(fileHash), Content: data}
+			kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileHash, Content: data}
 			fmt.Println("File located and downloaded")
 			return data
 		} else {
