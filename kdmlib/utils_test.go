@@ -10,6 +10,7 @@ func TestConvertToHexAddr(t *testing.T) {
 
 	if hexId != "aa5aec2a718cbfd55a7f5ee94d781a5f7ca04e9e" {
 		t.Error("Expected aa5aec2a718cbfd55a7f5ee94d781a5f7ca04e9e, got ", hexId)
+		t.Fail()
 	}
 
 	id = "0100110111001100111000100101110111110100111001010101010110000101100011110110111000111101001001100000000111111000001111010001011010000100100000000100001000101111"
@@ -17,10 +18,12 @@ func TestConvertToHexAddr(t *testing.T) {
 
 	if hexId != "4dcce25df4e555858f6e3d2601f83d168480422f" {
 		t.Error("Expected 4dcce25df4e555858f6e3d2601f83d168480422f, got ", hexId)
+		t.Fail()
 	}
 
 	if len(id)/len(hexId) != 4 {
 		t.Error("Wrong ID lengths")
+		t.Fail()
 	}
 }
 
@@ -30,6 +33,7 @@ func TestGenerateIDFromHex(t *testing.T) {
 
 	if id != "1000001010101010100111111101110111011110000010100000011001101110110011011011010111011100011001111101001001111110111101010001111001101010111110100110100001100010" {
 		t.Error("Wrong binary ID returned")
+		t.Fail()
 	}
 
 	hexId = "67d46d010f4b047962d14f4d3a8cb4751fcc9d1c"
@@ -37,10 +41,12 @@ func TestGenerateIDFromHex(t *testing.T) {
 
 	if id != "0110011111010100011011010000000100001111010010110000010001111001011000101101000101001111010011010011101010001100101101000111010100011111110011001001110100011100" {
 		t.Error("Wrong binary ID returned")
+		t.Fail()
 	}
 
 	if len(id)/len(hexId) != 4 {
 		t.Error("Wrong ID lengths")
+		t.Fail()
 	}
 }
 
@@ -48,11 +54,13 @@ func TestComputeDistance(t *testing.T) {
 	res, _ := ComputeDistance("010", "111")
 	if res != "101" {
 		t.Error("not the right result")
+		t.Fail()
 	}
 
 	_, err := ComputeDistance("11", "1111")
 	if err == nil {
 		t.Error("expected an error")
+		t.Fail()
 	}
 }
 
@@ -62,5 +70,16 @@ func TestConvertToUDPAddr(t *testing.T) {
 
 	if addr.String() != t1.Ip+":"+t1.Port {
 		t.Error("Expected", t1.Ip, ":", t1.Port, ", got ", addr.String())
+		t.Fail()
+	}
+}
+
+func TestGenerateZeroID(t *testing.T) {
+	zeroID := GenerateZeroID(160)
+	hexZero := ConvertToHexAddr(zeroID)
+
+	if len(hexZero) != 40 {
+		t.Error("Wrong ID length")
+		t.Fail()
 	}
 }
