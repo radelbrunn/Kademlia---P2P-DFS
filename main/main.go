@@ -4,16 +4,16 @@ import (
 	"Kademlia---P2P-DFS/kdmlib"
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
 	"Kademlia---P2P-DFS/kdmlib/restApi"
+	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
+	"net"
 	"net/http"
+	"os/exec"
 	"strings"
 	"time"
-	"net"
-	"log"
-	"os/exec"
-	"bytes"
 )
 
 func main() {
@@ -39,7 +39,7 @@ func SendAddress(ip string, port string, id string) kdmlib.AddressTriple {
 }
 
 func GetOutboundIP(isDocker bool) string {
-	if !isDocker{
+	if !isDocker {
 		conn, err := net.Dial("udp", "8.8.8.8:80")
 		if err != nil {
 			log.Fatal(err)
@@ -49,17 +49,17 @@ func GetOutboundIP(isDocker bool) string {
 		localAddr := conn.LocalAddr().(*net.UDPAddr)
 
 		return localAddr.IP.String()
-	}else{
-		cmd := exec.Command("hostname","-i")
+	} else {
+		cmd := exec.Command("hostname", "-i")
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		err := cmd.Run()
-		if err!= nil {
+		if err != nil {
 			fmt.Println("error while executing 'hostname -I'")
 			return ""
 		}
 		ip := out.String()
-		return strings.Replace(ip,"\n","",-1)
+		return strings.Replace(ip, "\n", "", -1)
 	}
 }
 
@@ -80,10 +80,10 @@ func StartKademlia(isContainer bool) {
 	}
 	nw := kdmlib.InitNetwork(port, ip, rt, nodeId, false, false, chanFile, chanPin, fileMap)
 	kdm := kdmlib.NewKademliaInstance(nw, nodeId, kdmlib.ALPHA, kdmlib.K, rt, chanFile, fileMap)
-	if firstNode.Id != nodeId && firstNode.Id != ""{
-		contacts , _:= kdm.LookupAlgorithm(nodeId,kdmlib.ContactLookup)
-		for _, j := range contacts{
-			rt.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD,j,false})
+	if firstNode.Id != nodeId && firstNode.Id != "" {
+		contacts, _ := kdm.LookupAlgorithm(nodeId, kdmlib.ContactLookup)
+		for _, j := range contacts {
+			rt.GiveOrder(kdmlib.OrderForRoutingTable{kdmlib.ADD, j, false})
 		}
 	}
 	fmt.Println("nodes in routing table:")

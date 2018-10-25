@@ -8,6 +8,7 @@ import (
 )
 
 func TestKademlia_SortContacts(t *testing.T) {
+
 	nodeId := "11100000"
 	rt := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId)
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
@@ -54,6 +55,7 @@ func TestKademlia_SortContacts(t *testing.T) {
 }
 
 func TestKademlia_RefreshClosest(t *testing.T) {
+
 	nodeId := "11100000"
 	rt := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId)
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
@@ -107,6 +109,7 @@ func TestKademlia_RefreshClosest(t *testing.T) {
 }
 
 func TestKademlia_GetNextContact_AskedAllContacts(t *testing.T) {
+
 	nodeId := "11100000"
 	rt := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId)
 	chanPin, chanFile, fileMap := fileUtilsKademlia.CreateAndLaunchFileWorkers()
@@ -159,6 +162,7 @@ func TestKademlia_GetNextContact_AskedAllContacts(t *testing.T) {
 }
 
 func TestKademlia_LookupContactTimeout(t *testing.T) {
+
 	nodeId := "11100000"
 	targetContact := AddressTriple{"127.0.0.17", "11000", "11111111"}
 
@@ -198,6 +202,7 @@ func TestKademlia_LookupContactTimeout(t *testing.T) {
 }
 
 func TestKademlia_LookupDataTimeout(t *testing.T) {
+
 	nodeId := "11100000"
 	targetData := "11111111"
 
@@ -234,6 +239,7 @@ func TestKademlia_LookupDataTimeout(t *testing.T) {
 }
 
 func TestKademlia_LookupEmptyRT(t *testing.T) {
+
 	nodeId := "11100000"
 	targetContact := AddressTriple{"127.0.0.17", "11000", "11111111"}
 

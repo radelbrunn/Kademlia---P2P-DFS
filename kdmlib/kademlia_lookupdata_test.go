@@ -34,26 +34,33 @@ func TestKademlia_LookupDataFail(t *testing.T) {
 		{"127.0.0.1", "12018", "11111010"}, {"127.0.0.1", "12019", "11111011"},
 		{"127.0.0.1", "12020", "11111100"}, {"127.0.0.1", "13000", "10110000"}}
 
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId1) + "'...")
+
 	rt1 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId1)
 	for _, e := range testContacts[1:11] {
 		rt1.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Millisecond * 1500)
+
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId2) + "'...")
 
 	rt2 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId2)
 	for _, e := range testContacts[0:1] {
 		rt2.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Millisecond * 1500)
 
-	rt3 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId2)
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId3) + "'...")
+
+	rt3 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId3)
 	for _, e := range testContacts[11:] {
 		rt3.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Millisecond * 1500)
+
 	chanPin1, chanFile1, fileMap1 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	chanPin2, chanFile2, fileMap2 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	chanPin3, chanFile3, fileMap3 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
@@ -86,7 +93,7 @@ func TestKademlia_LookupDataFail(t *testing.T) {
 func TestKademlia_LookupDataSuccess(t *testing.T) {
 
 	fileName := "11111111"
-	ioutil.WriteFile(fileUtilsKademlia.FileDirectory+ConvertToHexAddr(fileName), []byte("hello world"), 0644)
+	ioutil.WriteFile(fileUtilsKademlia.FileDirectory+fileName, []byte("hello world"), 0644)
 
 	nodeId1 := "11111001"
 	port1 := "12017"
@@ -105,19 +112,23 @@ func TestKademlia_LookupDataSuccess(t *testing.T) {
 		{"127.0.0.1", "12018", "11111010"}, {"127.0.0.1", "12019", "11111011"},
 		{"127.0.0.1", "12020", "11111100"}}
 
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId1) + "'...")
+
 	rt1 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId1)
 	for _, e := range testContacts[0:11] {
 		rt1.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Millisecond * 1500)
+
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId2) + "'...")
 
 	rt2 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId2)
 	for _, e := range testContacts[1:] {
 		rt2.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Millisecond * 1500)
 
 	chanPin1, chanFile1, fileMap1 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	chanPin2, chanFile2, fileMap2 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
@@ -141,13 +152,13 @@ func TestKademlia_LookupDataSuccess(t *testing.T) {
 		t.Fail()
 	}
 
-	os.Remove(fileUtilsKademlia.FileDirectory + ConvertToHexAddr(fileName))
+	os.Remove(fileUtilsKademlia.FileDirectory + fileName)
 }
 
 func TestKademlia_LookupData_160(t *testing.T) {
 
 	fileName := "1011000010000101111101010010000000001011110101000000001000101001001111010110111001001010001000110110001110001010001000010011001100011001010000001110110011010011"
-	ioutil.WriteFile(fileUtilsKademlia.FileDirectory+ConvertToHexAddr(fileName), []byte("hello world"), 0644)
+	ioutil.WriteFile(fileUtilsKademlia.FileDirectory+fileName, []byte("hello world"), 0644)
 
 	time.Sleep(time.Second * 2)
 
@@ -162,19 +173,23 @@ func TestKademlia_LookupData_160(t *testing.T) {
 	nodeId2 := testContacts[5].Id
 	port2 := testContacts[5].Port
 
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId1) + "'...")
+
 	rt1 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId1)
 	for _, e := range testContacts[1:8] {
 		rt1.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 2500)
+
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId2) + "'...")
 
 	rt2 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId2)
 	for _, e := range testContacts[2:7] {
 		rt2.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 2500)
 
 	chanPin1, chanFile1, fileMap1 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	chanPin2, chanFile2, fileMap2 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
@@ -193,5 +208,5 @@ func TestKademlia_LookupData_160(t *testing.T) {
 		t.Fail()
 	}
 
-	os.Remove(fileUtilsKademlia.FileDirectory + ConvertToHexAddr(fileName))
+	os.Remove(fileUtilsKademlia.FileDirectory + fileName)
 }

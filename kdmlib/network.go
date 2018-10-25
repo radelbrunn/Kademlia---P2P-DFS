@@ -199,21 +199,19 @@ func (network *Network) handleStore(fileName string, callbackContact AddressTrip
 	if data != nil {
 		//nodeID is appended to the fileName for testing if fileTest i set to true
 		if network.fileTest {
-			fileName = network.nodeID + fileName
+			network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: network.nodeID, Content: data}
+		} else {
+			network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 		}
-		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: ConvertToHexAddr(fileName), Content: data}
 	}
 }
 
 //Check if data is present and returns it if it is. Returns a list of contacts if not present.
 func (network *Network) handleFindData(DataID string) *pb.Container {
-	fmt.Println("entered handleFindData")
 	if network.fileMap.IsPresent(DataID) {
-		fmt.Println("found file locally")
 		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: network.nodeID, Attachment: nil}
 		return Container
 	} else {
-		fmt.Println("didnt found file locally")
 		return network.handleFindContact(DataID)
 	}
 }

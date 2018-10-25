@@ -202,8 +202,6 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 	//Start a listener function, which returns the desired answer
 	contacts, contactWithData := kademlia.lookupListener(resultChannel)
 
-
-
 	//Close the channels when the result is retrieved
 	close(lookupWorkerChannel)
 	close(resultChannel)
@@ -213,10 +211,10 @@ func (kademlia *Kademlia) LookupAlgorithm(target string, lookupType int) ([]Addr
 		fmt.Println("FIND_NODE procedure, initiated by node '" + ConvertToHexAddr(kademlia.nodeID) + "' was finalized")
 	case DataLookup:
 		fmt.Println("FIND_DATA procedure, initiated by node '" + ConvertToHexAddr(kademlia.nodeID) + "' was finalized")
-		if len(contactWithData.Id)!=0 {
+		if len(contactWithData.Id) != 0 {
 
 			fmt.Println("contact which has file has id " + ConvertToHexAddr(contactWithData.Id))
-		}else{
+		} else {
 			fmt.Println("no contact with data found")
 		}
 	}
@@ -232,7 +230,7 @@ func (kademlia *Kademlia) LookupData(fileHash string) []byte {
 	_, contactWithData := kademlia.LookupAlgorithm(fileHash, DataLookup)
 
 	//If yes, download the file via TCP and store it locally.
-	if contactWithData.Id != ""  {
+	if contactWithData.Id != "" {
 		data := kademlia.network.RequestFile(contactWithData, fileHash)
 		if data != nil {
 			kademlia.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileHash, Content: data}
@@ -290,12 +288,10 @@ func (kademlia *Kademlia) storeListener(resultChannel chan bool, expectedNumAnsw
 //Finds K closest contacts and stores the file.
 //Uses LookupContact to find closest contacts to hash of fileName.
 func (kademlia *Kademlia) StoreData(fileName string) {
-	fileNameHash := fileName
-
 	//Check whether the file exists.
 	//If yes, get the list of closest and send the file to these nodes.
-	if kademlia.network.fileMap.IsPresent(ConvertToHexAddr(fileName)) {
-		contacts, _ := kademlia.LookupAlgorithm(fileNameHash, ContactLookup)
+	if kademlia.network.fileMap.IsPresent(fileName) {
+		contacts, _ := kademlia.LookupAlgorithm(fileName, ContactLookup)
 		if contacts != nil {
 
 			//Instantiate channels for lookupWorkers and answers
