@@ -2,6 +2,7 @@ package kdmlib
 
 import (
 	"Kademlia---P2P-DFS/kdmlib/fileutils"
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -30,26 +31,32 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 		{"127.0.0.1", "12018", "11111010"}, {"127.0.0.1", "12019", "11111011"},
 		{"127.0.0.1", "12020", "11111100"}, {"127.0.0.1", "13000", "10110000"}}
 
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId1) + "'...")
+
 	rt1 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId1)
 	for _, e := range testContacts[1:11] {
 		rt1.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 1500)
+
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId2) + "'...")
 
 	rt2 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId2)
 	for _, e := range testContacts[0:1] {
 		rt2.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 1500)
 
-	rt3 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId2)
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId3) + "'...")
+
+	rt3 := CreateAllWorkersForRoutingTable(K, 8, 5, nodeId3)
 	for _, e := range testContacts[11:] {
 		rt3.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 1500)
 
 	chanPin1, chanFile1, fileMap1 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	chanPin2, chanFile2, fileMap2 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
@@ -87,8 +94,6 @@ func TestKademlia_LookupAlgorithm(t *testing.T) {
 
 func TestKademlia_LookupAlgorithm_160(t *testing.T) {
 
-	time.Sleep(time.Second * 2)
-
 	testContacts := []AddressTriple{
 		{"127.0.0.1", "22000", GenerateRandID(int64(rand.Intn(100)), 160)}, {"127.0.0.1", "22001", GenerateRandID(int64(rand.Intn(100)), 160)},
 		{"127.0.0.1", "22002", GenerateRandID(int64(rand.Intn(100)), 160)}, {"127.0.0.1", "22003", GenerateRandID(int64(rand.Intn(100)), 160)},
@@ -104,26 +109,32 @@ func TestKademlia_LookupAlgorithm_160(t *testing.T) {
 
 	targetContact := testContacts[7]
 
+	fmt.Println("Populating Routing Table of node '" + ConvertToHexAddr(nodeId1) + "'...")
+
 	rt1 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId1)
 	for _, e := range testContacts[1:5] {
 		rt1.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 2500)
+
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId2) + "'...")
 
 	rt2 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId2)
 	for _, e := range testContacts[2:7] {
 		rt2.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 2500)
 
-	rt3 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId2)
+	fmt.Println("Populating Routing Table of node: '" + ConvertToHexAddr(nodeId3) + "'...")
+
+	rt3 := CreateAllWorkersForRoutingTable(K, 160, 5, nodeId3)
 	for _, e := range testContacts[2:] {
 		rt3.GiveOrder(OrderForRoutingTable{ADD, e, false})
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Millisecond * 2500)
 
 	chanPin1, chanFile1, fileMap1 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
 	chanPin2, chanFile2, fileMap2 := fileUtilsKademlia.CreateAndLaunchFileWorkers()
