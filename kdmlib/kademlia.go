@@ -294,7 +294,10 @@ func (kademlia *Kademlia) StoreData(fileName string) {
 
 	//Check whether the file exists.
 	//If yes, get the list of closest and send the file to these nodes.
-	if kademlia.network.fileMap.IsPresent(ConvertToHexAddr(fileName)) {
+	fmt.Println("entered store data")
+	fmt.Println("file is present? ", kademlia.network.fileMap.IsPresent(fileName))
+	fmt.Println("file id is "+fileName)
+	if kademlia.network.fileMap.IsPresent(fileName) {
 		contacts, _ := kademlia.LookupAlgorithm(fileNameHash, ContactLookup)
 		if contacts != nil {
 

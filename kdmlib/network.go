@@ -57,7 +57,7 @@ func InitNetwork(port string, ip string, rt RoutingTable, nodeID string, noNetwo
 
 	//Set test flag to true for testing puposes
 	if !noNetworkTest {
-		udpBuffer := make([]byte, 4096)
+		udpBuffer := make([]byte, 8192)
 		tcpBuffer := make([]byte, 4096)
 
 		//Initiate UDP connection (for handling the requests)
@@ -201,13 +201,15 @@ func (network *Network) handleStore(fileName string, callbackContact AddressTrip
 		if network.fileTest {
 			fileName = network.nodeID + fileName
 		}
-		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: ConvertToHexAddr(fileName), Content: data}
+		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 	}
 }
 
 //Check if data is present and returns it if it is. Returns a list of contacts if not present.
 func (network *Network) handleFindData(DataID string) *pb.Container {
 	fmt.Println("entered handleFindData")
+	fmt.Println("data id is :")
+	fmt.Println(DataID)
 	if network.fileMap.IsPresent(DataID) {
 		fmt.Println("found file locally")
 		Container := &pb.Container{REQUEST_TYPE: Return, REQUEST_ID: FindData, MSG_ID: "", ID: network.nodeID, Attachment: nil}
@@ -245,7 +247,7 @@ func sendPacket(ip string, port string, packet []byte) ([]byte, error) {
 	conn.Write(packet)
 	conn.SetReadDeadline(time.Now().Add(time.Second * 1))
 
-	buff := make([]byte, 2048)
+	buff := make([]byte, 8192)
 	n, err := conn.Read(buff)
 	if err == nil {
 		return buff[:n], nil
@@ -283,11 +285,15 @@ func (network *Network) SendFindNode(toContact AddressTriple, targetID string) (
 
 	if err != nil {
 		network.rt.GiveOrder(OrderForRoutingTable{REMOVE, toContact, false})
+		fmt.Println("error while unmarshalling")
 		return nil, err
 	} else {
 		network.rt.GiveOrder(OrderForRoutingTable{ADD, toContact, false})
 		object := &pb.Container{}
-		proto.Unmarshal(answer, object)
+		err := proto.Unmarshal(answer, object)
+		if err != nil {
+			return nil , err
+		}
 		result := make([]AddressTriple, len(object.GetReturnContacts().ContactInfo))
 		for i := 0; i < len(object.GetReturnContacts().ContactInfo); i++ {
 			result[i] = AddressTriple{object.GetReturnContacts().ContactInfo[i].IP, object.GetReturnContacts().ContactInfo[i].PORT, object.GetReturnContacts().ContactInfo[i].ID}

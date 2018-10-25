@@ -30,6 +30,7 @@ func SendAddress(ip string, port string, id string) kdmlib.AddressTriple {
 			responseString := string(body)
 			fmt.Println(responseString)
 			tripleElements := strings.Split(responseString, ",")
+			fmt.Println("first node id : "+responseString)
 			return kdmlib.AddressTriple{Ip: tripleElements[0], Port: tripleElements[1], Id: tripleElements[2]}
 		}
 	} else {
@@ -57,8 +58,11 @@ func GetOutboundIP(isDocker bool) string {
 		if err!= nil {
 			fmt.Println("error while executing 'hostname -I'")
 			return ""
+		}else{
+			fmt.Println("")
 		}
 		ip := out.String()
+
 		return strings.Replace(ip,"\n","",-1)
 	}
 }
