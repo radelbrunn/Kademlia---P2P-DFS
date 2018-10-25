@@ -199,9 +199,10 @@ func (network *Network) handleStore(fileName string, callbackContact AddressTrip
 	if data != nil {
 		//nodeID is appended to the fileName for testing if fileTest i set to true
 		if network.fileTest {
-			fileName = network.nodeID + fileName
+			network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: network.nodeID, Content: data}
+		} else {
+			network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: fileName, Content: data}
 		}
-		network.fileChannel <- fileUtilsKademlia.Order{Action: fileUtilsKademlia.ADD, Name: ConvertToHexAddr(fileName), Content: data}
 	}
 }
 
